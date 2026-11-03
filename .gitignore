@@ -1,0 +1,18 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Cache de embeddings
+.cache/
+
+# Segredos e dados locais
+.env
+the-shift-mails-outputs/*
+!the-shift-mails-outputs/.gitkeep

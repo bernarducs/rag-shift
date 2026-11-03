@@ -1,0 +1,23 @@
+[project]
+name = "rag-shift"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "bernarducs", email = "bernarducs@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "groq>=1.7.0",
+    "nltk>=3.10.4",
+    "python-dotenv>=1.2.4",
+    "qdrant-client>=1.20.0",
+    "sentence-transformers>=6.2.0",
+]
+
+[project.scripts]
+rag-shift = "rag_shift:main"
+
+[build-system]
+requires = ["uv_build>=0.12.1,<0.13.0"]
+build-backend = "uv_build"
