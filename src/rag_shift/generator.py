@@ -3,11 +3,12 @@ import os
 from groq import Groq
 
 from rag_shift.config import SYSTEM_PROMPT
+from rag_shift.preprocessing import heading_path
 
 
 def generate_answer(query: str, docs: list[tuple[float, dict]]) -> str:
     context = "\n\n".join(
-        f"[{doc['subject']} - {doc['date'][:10]}]\n{doc['text']}" for _, doc in docs
+        f"[{heading_path(doc)} - {doc['date'][:10]}]\n{doc['text']}" for _, doc in docs
     )
     client = Groq(api_key=os.environ["GROQ_API_KEY"])
     response = client.chat.completions.create(

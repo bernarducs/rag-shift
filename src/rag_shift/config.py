@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 # que leem HF_HUB_OFFLINE apenas no momento do import
 load_dotenv(ROOT / ".env")
 CORPUS_DIR = ROOT / "the-shift-mails-outputs"
+PROCESSED_DIR = ROOT / "the-shift-mails-processed"
 CACHE_DIR = ROOT / ".cache"
 
 SYSTEM_PROMPT = (
