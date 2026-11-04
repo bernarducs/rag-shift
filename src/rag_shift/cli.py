@@ -1,3 +1,4 @@
+import argparse
 import os
 import sys
 
@@ -19,10 +20,24 @@ REQUIRED_ENV = [
 ]
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog="rag-shift",
+        description=(
+            "Responde perguntas sobre os emails da newsletter The Shift: recupera os "
+            "trechos mais relevantes e gera a resposta com um modelo do Groq."
+        ),
+        epilog=(
+            "Antes da primeira consulta, rode `rag-shift-build` para gerar a pasta "
+            "processada. Parâmetros e chaves ficam no .env (veja env.template)."
+        ),
+    )
+    parser.add_argument("query", help='pergunta entre aspas, ex.: "o que é machine learning"')
+    return parser.parse_args()
+
+
 def main() -> None:
-    if len(sys.argv) < 2:
-        sys.exit('Uso: uv run rag-shift "sua pergunta"')
-    query = sys.argv[1]
+    query = parse_args().query
 
     # falha cedo se faltar algo no .env, antes de qualquer processamento pesado
     missing = [name for name in REQUIRED_ENV if not os.environ.get(name)]

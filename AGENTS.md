@@ -5,10 +5,11 @@ Protótipo de RAG (CLI) sobre emails da The Shift. Python 3.12, gerenciado com `
 ## Comandos
 - Gerar a pasta processada (antes da 1ª consulta e quando o chunking mudar): `uv run rag-shift-build`
 - Rodar: `uv run rag-shift "pergunta"`
+- Ajuda dos comandos: `uv run rag-shift --help` e `uv run rag-shift-build --help` (argparse)
 - Adicionar dependência: `uv add <pacote>`
 
 ## Estrutura (`src/rag_shift/`)
-- `config.py`: caminhos e prompt; carrega o `.env` em `os.environ` (os módulos leem `os.environ[...]` onde usam: modelo, coleção, TOP_K, CHUNK_SIZE, chaves do Groq); carrega o `.env` (precisa ser importado antes de `sentence_transformers`)
+- `config.py`: caminhos e prompt; carrega o `.env` em `os.environ` (os módulos leem `os.environ[...]` onde usam: modelo, coleção, TOP_K, CHUNK_SIZE, chaves do Groq); deve ser importado antes de `sentence_transformers` (o `HF_HUB_OFFLINE` é lido no import)
 - `preprocessing.py`: chunking estrutural. `normalize` (rodapé, URLs, escapes, preservando os `\n`), `split_sections` (títulos `** Título` + linha de traços; 1º título = edição; título em maiúsculas sem corpo = seção), `strip_boilerplate`, `split_paragraphs` (2+ quebras), `chunk_section` (agrupa até `CHUNK_SIZE`; parágrafo longo cai para sentenças via nltk) e `heading_path` (`edição > seção > título`)
 - `corpus.py`: `process_mail` (bruto -> sections/chunks), `build_processed` (grava `the-shift-mails-processed/`, preservando o `enrichment` por `hash` da matéria), `load_corpus` (lê o processado e achata em payloads com edition, section, title)
 - `build.py`: ponto de entrada `rag-shift-build`
@@ -16,8 +17,7 @@ Protótipo de RAG (CLI) sobre emails da The Shift. Python 3.12, gerenciado com `
 - `index.py`: Qdrant em memória, coleção `the-shift-mails`, `Distance.COSINE`
 - `retriever.py`: top 5, um resultado por email (maior score)
 - `generator.py`: resposta via Groq (`GROQ_API_KEY`, `MODEL`)
-- `cli.py`: ponto de entrada (`rag-shift`)
-
+- `cli.py`: ponto de entrada (`rag-shift`), argparse e checagem das variáveis obrigatórias do `.env`
 - `scripts/inspect_chunks.py`: valida o chunking sem embeddings (`uv run python scripts/inspect_chunks.py [arquivo.json] | --stats`)
 
 ## Pipeline

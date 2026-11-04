@@ -1,3 +1,4 @@
+import argparse
 import os
 import sys
 
@@ -8,6 +9,16 @@ from rag_shift.preprocessing import ensure_tokenizer
 
 
 def main() -> None:
+    argparse.ArgumentParser(
+        prog="rag-shift-build",
+        description=(
+            "Lê os emails brutos (the-shift-mails-outputs/), aplica o chunking estrutural "
+            "e grava os JSONs em the-shift-mails-processed/, preservando o enrichment "
+            "das matérias que não mudaram."
+        ),
+        epilog="Se o chunking mudou, apague .cache/ para reindexar os embeddings.",
+    ).parse_args()
+
     if not os.environ.get("CHUNK_SIZE"):
         sys.exit("Variável ausente no .env: CHUNK_SIZE")
 
