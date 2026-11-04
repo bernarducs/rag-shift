@@ -1,8 +1,7 @@
+import os
 import re
 
 from nltk.tokenize import sent_tokenize
-
-from rag_shift.config import CHUNK_SIZE
 
 
 def clean_text(body: str) -> str:
@@ -20,10 +19,11 @@ def clean_text(body: str) -> str:
 
 
 def chunk_text(text: str) -> list[str]:
+    chunk_size = int(os.environ["CHUNK_SIZE"])
     sentences = sent_tokenize(text, language="portuguese")
     chunks, current = [], []
     for sentence in sentences:
-        if current and sum(len(s) for s in current) + len(sentence) > CHUNK_SIZE:
+        if current and sum(len(s) for s in current) + len(sentence) > chunk_size:
             chunks.append(" ".join(current))
             # sobreposição de uma sentença
             current = [current[-1]]

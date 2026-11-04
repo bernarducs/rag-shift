@@ -1,3 +1,4 @@
+import os
 import sys
 
 import nltk
@@ -8,11 +9,26 @@ from rag_shift.generator import generate_answer
 from rag_shift.index import build_index
 from rag_shift.retriever import retrieve
 
+REQUIRED_ENV = [
+    "GROQ_API_KEY",
+    "MODEL",
+    "COLLECTION",
+    "EMBEDDING_MODEL",
+    "VECTOR_SIZE",
+    "TOP_K",
+    "CHUNK_SIZE",
+]
+
 
 def main() -> None:
     if len(sys.argv) < 2:
         sys.exit('Uso: uv run rag-shift "sua pergunta"')
     query = sys.argv[1]
+
+    # falha cedo se faltar algo no .env, antes de qualquer processamento pesado
+    missing = [name for name in REQUIRED_ENV if not os.environ.get(name)]
+    if missing:
+        sys.exit(f"Variáveis ausentes no .env: {', '.join(missing)}")
 
     # baixa o tokenizer apenas se ainda não existir localmente
     try:

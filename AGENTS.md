@@ -7,7 +7,7 @@ Protótipo de RAG (CLI) sobre emails da The Shift. Python 3.12, gerenciado com `
 - Adicionar dependência: `uv add <pacote>`
 
 ## Estrutura (`src/rag_shift/`)
-- `config.py`: caminhos e constantes; carrega o `.env` (precisa ser importado antes de `sentence_transformers`)
+- `config.py`: caminhos e prompt; carrega o `.env` em `os.environ` (os módulos leem `os.environ[...]` onde usam: modelo, coleção, TOP_K, CHUNK_SIZE, chaves do Groq); carrega o `.env` (precisa ser importado antes de `sentence_transformers`)
 - `preprocessing.py`: `clean_text` (regex: URLs, rodapé, escapes) e `chunk_text` (nltk, por sentenças)
 - `corpus.py`: lê `the-shift-mails-outputs/*.json` e gera os chunks
 - `embeddings.py`: modelo SentenceTransformer e cache em `.cache/`
