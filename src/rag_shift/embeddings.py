@@ -7,6 +7,7 @@ from sentence_transformers import SentenceTransformer
 
 from rag_shift.config import CACHE_DIR
 from rag_shift.corpus import load_corpus
+from rag_shift.preprocessing import heading_path
 
 
 def load_model() -> SentenceTransformer:
@@ -23,7 +24,7 @@ def get_embeddings(model: SentenceTransformer) -> tuple[np.ndarray, list[dict]]:
     chunks = load_corpus()
     print(f"Indexando {len(chunks)} chunks (primeira execução)...", file=sys.stderr)
     vectors = model.encode(
-        ["passage: " + c["text"] for c in chunks],
+        [f"passage: {heading_path(c)}\n{c['text']}" for c in chunks],
         batch_size=64,
         normalize_embeddings=True,
         show_progress_bar=True,

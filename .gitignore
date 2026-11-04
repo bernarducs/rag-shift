@@ -16,3 +16,5 @@ wheels/
 .env
 the-shift-mails-outputs/*
 !the-shift-mails-outputs/.gitkeep
+the-shift-mails-processed/*
+!the-shift-mails-processed/.gitkeep

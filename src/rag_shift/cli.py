@@ -1,12 +1,11 @@
 import os
 import sys
 
-import nltk
-
 import rag_shift.config  # noqa: F401  (carrega o .env antes dos demais imports)
 from rag_shift.embeddings import get_embeddings, load_model
 from rag_shift.generator import generate_answer
 from rag_shift.index import build_index
+from rag_shift.preprocessing import ensure_tokenizer
 from rag_shift.retriever import retrieve
 
 REQUIRED_ENV = [
@@ -30,11 +29,7 @@ def main() -> None:
     if missing:
         sys.exit(f"Variáveis ausentes no .env: {', '.join(missing)}")
 
-    # baixa o tokenizer apenas se ainda não existir localmente
-    try:
-        nltk.data.find("tokenizers/punkt_tab")
-    except LookupError:
-        nltk.download("punkt_tab", quiet=True)
+    ensure_tokenizer()
     model = load_model()
     vectors, chunks = get_embeddings(model)
     client = build_index(vectors, chunks)
