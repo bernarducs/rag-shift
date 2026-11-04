@@ -1,15 +1,16 @@
 import json
+import os
 import sys
 
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-from rag_shift.config import CACHE_DIR, EMBEDDING_MODEL
+from rag_shift.config import CACHE_DIR
 from rag_shift.corpus import load_corpus
 
 
 def load_model() -> SentenceTransformer:
-    return SentenceTransformer(EMBEDDING_MODEL)
+    return SentenceTransformer(os.environ["EMBEDDING_MODEL"])
 
 
 def get_embeddings(model: SentenceTransformer) -> tuple[np.ndarray, list[dict]]:

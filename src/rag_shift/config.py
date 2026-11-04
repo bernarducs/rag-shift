@@ -10,12 +10,6 @@ load_dotenv(ROOT / ".env")
 CORPUS_DIR = ROOT / "the-shift-mails-outputs"
 CACHE_DIR = ROOT / ".cache"
 
-COLLECTION = "the-shift-mails"
-EMBEDDING_MODEL = "intfloat/multilingual-e5-small"
-VECTOR_SIZE = 384
-TOP_K = 5
-CHUNK_SIZE = 1000
-
 SYSTEM_PROMPT = (
     "Você responde perguntas usando apenas o contexto fornecido, trechos de emails "
     "da newsletter The Shift. Responda em português. Se o contexto não tiver "
