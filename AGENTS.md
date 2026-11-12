@@ -11,8 +11,8 @@ Protótipo de RAG (CLI) sobre emails da The Shift. Python 3.12, gerenciado com `
 
 ## Estrutura (`src/rag_shift/`)
 - `config.py`: caminhos e prompt; carrega o `.env` em `os.environ` (os módulos leem `os.environ[...]` onde usam: modelo, coleção, TOP_K, CHUNK_SIZE, chaves do Groq); deve ser importado antes de `sentence_transformers` (o `HF_HUB_OFFLINE` é lido no import)
-- `preprocessing.py`: chunking estrutural. `normalize` (rodapé, URLs, escapes, preservando os `\n`), `split_sections` (títulos `** Título` + linha de traços; 1º título = edição; título em maiúsculas sem corpo = seção), `strip_boilerplate`, `split_paragraphs` (2+ quebras), `chunk_section` (agrupa até `CHUNK_SIZE`; parágrafo longo cai para sentenças via nltk) e `heading_path` (`edição > seção > título`)
-- `corpus.py`: `process_mail` (bruto -> sections/chunks), `build_processed` (grava `the-shift-mails-processed/`, preservando o `enrichment` por `hash` da matéria), `load_corpus` (lê o processado e achata em payloads com edition, section, title)
+- `preprocessing.py`: chunking estrutural. `normalize` (= `tidy(strip_urls(prepare(body)))`: rodapé, URLs, escapes, preservando os `\n`; `link_text` é o mesmo texto com as URLs), `split_sections` (títulos `** Título` + linha de traços; 1º título = edição; título em maiúsculas sem corpo = seção), `strip_boilerplate`, `split_paragraphs` (2+ quebras), `chunk_section` (agrupa até `CHUNK_SIZE`; parágrafo longo cai para sentenças via nltk) `extract_links` (links de uma matéria: título só em item de lista `* Título (url)`, URL sem `utm_*`, deduplicada; descarta YouTube, WhatsApp, Mailchimp, assinatura/institucional do `theshift.info`, ícones de redes sociais; `theshift.info/hot` e `/talk` ficam) e `heading_path` (`edição > seção > título`)
+- `corpus.py`: `process_mail` (bruto -> sections/chunks), `build_processed` (grava `the-shift-mails-processed/`, preservando o `enrichment` por `hash` da matéria), `load_corpus` (lê o processado e achata em payloads com edition, section, title), `links_by_heading` (atribui os links a cada seção; se os títulos do texto com URLs não batem com os do normalizado, o email fica sem links e o build avisa), `load_processed` e `find_links` (acha os links da matéria de um chunk pelo texto, sem mudar o payload do índice nem o `.cache/`)
 - `build.py`: ponto de entrada `rag-shift-build`
 - `enrichment.py`: schema Pydantic (`companies`, `technologies`, `places`, `people`, `topics` com 13 tópicos fechados), prompt, chamada ao LLM (API compatível com a da OpenAI: `ENRICH_API_KEY`, `ENRICH_BASE_URL`, `ENRICH_MODEL`) e normalização determinística (lista de bloqueio, sufixos societários, aliases só de grafia, grafia canônica por frequência)
 - `enrich.py`: ponto de entrada `rag-shift-enrich`; uma chamada por matéria em paralelo, grava `enrichment` com `status` (`ok`, `empty`, `failed`, `rate_limited`), retomável
@@ -21,10 +21,10 @@ Protótipo de RAG (CLI) sobre emails da The Shift. Python 3.12, gerenciado com `
 - `retriever.py`: top 5, um resultado por email (maior score)
 - `generator.py`: resposta via Groq (`GROQ_API_KEY`, `MODEL`)
 - `cli.py`: ponto de entrada (`rag-shift`), argparse e checagem das variáveis obrigatórias do `.env`
-- `scripts/inspect_chunks.py`: valida o chunking sem embeddings (`uv run python scripts/inspect_chunks.py [arquivo.json] | --stats`)
+- `scripts/inspect_chunks.py`: valida o chunking sem embeddings (`uv run python scripts/inspect_chunks.py [arquivo.json] | --stats | --links [arquivo.json]`)
 
 ## Pipeline
-`the-shift-mails-outputs/` (bruto, imutável) -> `rag-shift-build` -> `the-shift-mails-processed/` (um JSON por email: `sections[]` com `edition`, `section`, `title`, `hash`, `chunks`, `enrichment`) -> `rag-shift-enrich` (preenche `enrichment`) -> `.cache/` (embeddings) -> busca. Mudou o chunking: rebuild + apagar `.cache/`.
+`the-shift-mails-outputs/` (bruto, imutável) -> `rag-shift-build` -> `the-shift-mails-processed/` (um JSON por email: `sections[]` com `edition`, `section`, `title`, `hash`, `chunks`, `links`, `enrichment`) -> `rag-shift-enrich` (preenche `enrichment`) -> `.cache/` (embeddings) -> busca. Mudou o chunking: rebuild + apagar `.cache/`.
 
 ## Convenções
 - Commits em pt_BR, formato convencional (`feat:`, `fix:`, `chore:`), sem atribuição a IA
@@ -36,6 +36,7 @@ Protótipo de RAG (CLI) sobre emails da The Shift. Python 3.12, gerenciado com `
 ## Cuidados
 - `.env`, `.cache/` e o conteúdo de `the-shift-mails-outputs/` e `the-shift-mails-processed/` não vão para o git (só os `.gitkeep`)
 - Mudar corpus, `CHUNK_SIZE` ou `EMBEDDING_MODEL` exige apagar `.cache/`
+- O `hash` da seção vem só do texto normalizado, então `links` não o altera e o `enrichment` sobrevive ao build; ao mexer em `normalize` e afins, conferir que os `hash` não mudam
 - Os `\r\n\t` do corpus já são whitespace real após `json.load`; a limpeza é feita com regex, não com nltk
 - A hierarquia do texto vem do número de `\n` (1 = linha/bullet, 2 = parágrafo, 3+ = novo título); por isso `normalize` não colapsa as quebras
 - 11 emails (convites/webinars) não têm títulos e caem no fallback: o email inteiro vira uma seção

@@ -18,7 +18,7 @@ uv run rag-shift-build        # gera the-shift-mails-processed/ (~10 s)
 uv run rag-shift "o que é machine learning"
 ```
 
-A saída é a resposta do LLM seguida dos 5 emails mais relevantes (`score - assunto`).
+A saída é a resposta do LLM seguida dos 5 emails mais relevantes (`score - assunto`). Sob cada email aparecem as **fontes**: todos os links da matéria (com o título quando o link é um item de lista). Os links vêm de `rag-shift-build`; vídeos do YouTube e links de rodapé são ignorados.
 
 ## Comandos
 
