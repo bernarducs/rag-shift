@@ -23,6 +23,8 @@ def main() -> None:
         sys.exit("Variável ausente no .env: CHUNK_SIZE")
 
     ensure_tokenizer()
-    total = build_processed()
+    total, misaligned = build_processed()
     print(f"{total} emails processados em {PROCESSED_DIR.name}/")
+    if misaligned:
+        print(f"{misaligned} emails ficaram sem links (títulos do texto com urls não batem).")
     print("Se o chunking mudou, apague .cache/ para reindexar os embeddings.")

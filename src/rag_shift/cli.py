@@ -3,6 +3,7 @@ import os
 import sys
 
 import rag_shift.config  # noqa: F401  (carrega o .env antes dos demais imports)
+from rag_shift.corpus import find_links, load_processed
 from rag_shift.embeddings import get_embeddings, load_model
 from rag_shift.generator import generate_answer
 from rag_shift.index import build_index
@@ -53,5 +54,18 @@ def main() -> None:
     print(generate_answer(query, docs))
     print("\n")
     print("top 5 documentos relevantes:")
+    processed = load_processed()
     for score, doc in docs:
         print(f"{score:.3f}".replace(".", ",") + f" - {doc['subject']}")
+        links = find_links(doc, processed)
+        if links:
+            print("   Fontes:")
+        for link in links:
+            # título só nos itens de lista; o próprio site aparece como "The Shift"
+            if link.get("title"):
+                print(f"   - {link['title']}")
+                print(f"     {link['url']}")
+            elif link["domain"] == "theshift.info":
+                print(f"   - The Shift: {link['url']}")
+            else:
+                print(f"   - {link['url']}")

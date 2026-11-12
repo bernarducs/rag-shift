@@ -1,5 +1,6 @@
 import os
 import re
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import nltk
 from nltk.tokenize import sent_tokenize
@@ -25,22 +26,37 @@ def ensure_tokenizer() -> None:
         nltk.download("punkt_tab", quiet=True)
 
 
-def normalize(body: str) -> str:
+def prepare(body: str) -> str:
     # corta o rodapé da newsletter
     for marker in FOOTER_MARKERS:
         body = body.split(marker)[0]
     # padroniza quebras e caracteres invisíveis, preservando a estrutura de \n
     body = body.replace("\r\n", "\n").replace("\r", "")
     body = body.replace("\xa0", " ")
-    body = re.sub(r"[​‌‍﻿]", "", body)
+    return re.sub(r"[​‌‍﻿]", "", body)
+
+
+def strip_urls(body: str) -> str:
     # remove urls (com ou sem parênteses)
     body = re.sub(r"\(\s*https?://[^\s)]*\s*\)", "", body)
-    body = re.sub(r"https?://\S+", "", body)
+    return re.sub(r"https?://\S+", "", body)
+
+
+def tidy(body: str) -> str:
     # espaços sobrando, inclusive antes de pontuação deixados pelas urls
     body = re.sub(r"[ \t]+([.,;:])", r"\1", body)
     body = re.sub(r"[ \t]{2,}", " ", body)
     body = re.sub(r"[ \t]+\n", "\n", body)
     return body.strip()
+
+
+def normalize(body: str) -> str:
+    return tidy(strip_urls(prepare(body)))
+
+
+def link_text(body: str) -> str:
+    # mesmo texto do normalize, mas com as urls: os títulos caem nas mesmas posições
+    return tidy(prepare(body))
 
 
 def is_upper_title(title: str) -> bool:
@@ -87,7 +103,7 @@ def split_sections(text: str, subject: str) -> list[dict]:
     matches = list(HEADING_RE.finditer(text))
     # sem títulos (convites, webinars): o email inteiro vira uma seção
     if not matches:
-        return [{"edition": "", "section": "", "title": subject, "body": text}]
+        return [{"edition": "", "section": "", "title": subject, "body": text, "heading": None}]
 
     sections, edition, section = [], "", ""
     for i, match in enumerate(matches):
@@ -102,9 +118,70 @@ def split_sections(text: str, subject: str) -> list[dict]:
             section = title
             continue
         sections.append(
-            {"edition": edition, "section": section, "title": title, "body": body}
+            {"edition": edition, "section": section, "title": title, "body": body, "heading": i}
         )
     return sections
+
+
+URL_RE = re.compile(r"\(\s*(https?://[^\s)]*)\s*\)|(https?://[^\s)\]>]+)")
+TRACKING_PARAMS = ("utm_", "mc_cid", "mc_eid")
+SOCIAL_DOMAINS = ("linkedin.com", "twitter.com", "x.com", "facebook.com", "instagram.com")
+# links do próprio site que levam a uma matéria
+OWN_SITE_PATHS = ("hot", "talk")
+
+
+def clean_url(url: str) -> str:
+    # tira só os parâmetros de rastreamento, mantendo o resto da query e o fragmento
+    parts = urlsplit(url.rstrip(".,;"))
+    query = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True)
+             if not k.startswith(TRACKING_PARAMS)]
+    return urlunsplit(parts._replace(query=urlencode(query)))
+
+
+def link_domain(url: str) -> str:
+    return urlsplit(url).netloc.lower().removeprefix("www.")
+
+
+def keep_link(url: str, line_text: str) -> bool:
+    domain, path = link_domain(url), urlsplit(url).path.strip("/")
+    if not domain:  # url malformada, ex.: "http://"
+        return False
+    if domain in ("youtube.com", "youtu.be", "wa.me", "mailchi.mp"):
+        return False
+    if domain == "api.whatsapp.com" or domain.endswith(("list-manage.com", "mailchimp.com")):
+        return False
+    if "maillist-manage" in domain:  # redirecionamento de rastreamento
+        return False
+    if domain == "theshift.info":
+        return path.split("/")[0] in OWN_SITE_PATHS
+    if domain.endswith(SOCIAL_DOMAINS):
+        # ícone de rede social: a linha não tem texto além do nome da rede
+        return len(re.sub(r"[^\w]", "", line_text)) > 12
+    return True
+
+
+def extract_links(text: str) -> list[dict]:
+    """Links de uma matéria (texto ainda com as urls), sem rodapé nem ruído.
+
+    O título só é guardado para item de lista (`* Título (url)`), onde ele é a
+    manchete da fonte; nos links no meio do texto fica só a url.
+    """
+    links: dict[str, dict] = {}
+    for line in strip_boilerplate(text).split("\n"):
+        matches = list(URL_RE.finditer(line))
+        for n, match in enumerate(matches):
+            url = clean_url(match.group(1) or match.group(2))
+            before = line[: match.start()]
+            plain_line = URL_RE.sub("", line)
+            if not keep_link(url, plain_line):
+                continue
+            title = ""
+            tail = line[match.end():].strip(" .,;:!?)")
+            if n == 0 and before.startswith("* ") and not tail and not URL_RE.search(tail):
+                title = before.removeprefix("* ").strip(" .,;:-–—")[:200]
+            entry = links.setdefault(url, {"url": url, "domain": link_domain(url), "title": ""})
+            entry["title"] = entry["title"] or title
+    return [{k: v for k, v in entry.items() if v} for entry in links.values()]
 
 
 def heading_path(chunk: dict) -> str:

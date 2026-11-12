@@ -4,6 +4,7 @@ Uso:
     uv run python scripts/inspect_chunks.py            # sorteia 3 emails
     uv run python scripts/inspect_chunks.py a.json b.json
     uv run python scripts/inspect_chunks.py --stats    # estatísticas do corpus todo
+    uv run python scripts/inspect_chunks.py --links [a.json ...]  # seções com seus links
 """
 
 import random
@@ -12,7 +13,7 @@ import sys
 from pathlib import Path
 
 from rag_shift.config import CORPUS_DIR
-from rag_shift.corpus import chunk_mail, load_mail
+from rag_shift.corpus import chunk_mail, load_mail, process_mail
 from rag_shift.preprocessing import ensure_tokenizer, heading_path
 
 
@@ -23,6 +24,15 @@ def show(path: Path) -> None:
     for i, chunk in enumerate(chunks):
         print(f"\n--- [{i}] {heading_path(chunk)} ({len(chunk['text'])} chars)")
         print(chunk["text"])
+
+
+def show_links(path: Path) -> None:
+    mail = load_mail(path)
+    print(f"\n===== {mail['date'][:10]} | {mail['subject']}")
+    for section in process_mail(mail)["sections"]:
+        print(f"\n--- {heading_path(section)} ({len(section['links'])} links)")
+        for link in section["links"]:
+            print(f"  [{link['domain']}] {link.get('title', '')}\n    {link['url']}")
 
 
 def stats() -> None:
@@ -51,9 +61,12 @@ def main() -> None:
     if args == ["--stats"]:
         stats()
         return
+    links = bool(args) and args[0] == "--links"
+    if links:
+        args = args[1:]
     paths = [Path(a) for a in args] or random.sample(sorted(CORPUS_DIR.glob("*.json")), 3)
     for path in paths:
-        show(path)
+        (show_links if links else show)(path)
 
 
 if __name__ == "__main__":
