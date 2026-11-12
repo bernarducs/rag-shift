@@ -3,6 +3,8 @@
 Protótipo de RAG por linha de comando sobre emails da newsletter The Shift.
 Recupera os trechos mais próximos da pergunta (Qdrant em memória, similaridade cosseno,
 embeddings `intfloat/multilingual-e5-small`) e gera a resposta com um modelo via API do Groq.
+Também responde a perguntas de filtro e contagem ("quantas matérias de 2022?", "notícias sobre a
+Nvidia") a partir de metadados extraídos de cada matéria.
 
 ## Requisitos
 
@@ -10,60 +12,103 @@ embeddings `intfloat/multilingual-e5-small`) e gera a resposta com um modelo via
 - **Token da API do Groq** (`GROQ_API_KEY`), gerado em [console.groq.com](https://console.groq.com/keys), e o nome de um modelo disponível no Groq em `MODEL`
 - Os JSONs dos emails em `the-shift-mails-outputs/`
 
-## Como rodar
+## Guia de uso
+
+Do zero até a primeira resposta:
 
 ```bash
-cp env.template .env          # preencha GROQ_API_KEY e MODEL
-uv run rag-shift-build        # gera the-shift-mails-processed/ (~10 s)
-uv run rag-shift "o que é machine learning"
+cp env.template .env                  # 1. preencha GROQ_API_KEY e MODEL
+uv run rag-shift-build                # 2. gera the-shift-mails-processed/ (~10 s)
+uv run rag-shift-enrich               # 3. (opcional) metadados para filtros e contagens; precisa de ENRICH_* no .env
+uv run rag-shift "o que é machine learning"   # 4. a 1ª consulta indexa o corpus (~12 min); as próximas levam ~20 s
 ```
 
-A saída é a resposta do LLM seguida dos 5 emails mais relevantes (`score - assunto`). Cada resultado traz a data do email no fuso de Brasília e o caminho da matéria (`20/04/2024 - edição > seção > título`; é a data em que a The Shift publicou, não a dos artigos citados) e as **fontes**: todos os links da matéria (com o título quando o link é um item de lista). Os links vêm de `rag-shift-build`; vídeos do YouTube e links de rodapé são ignorados.
+- O passo 3 grava o `enrichment` em `the-shift-mails-processed/` e é retomável. Sem ele, o corpus
+  funciona só como busca semântica (os filtros e as contagens ficam vazios).
+- Mudou o corpus, o chunking, o modelo de embeddings ou o enrichment? Rode `rag-shift-build` de novo
+  (se for o caso) e apague `.cache/embeddings.npy` e `.cache/chunks.json`.
+- A 1ª consulta precisa de internet para baixar o modelo de embeddings e o tokenizer do NLTK. Deixe
+  `HF_HUB_OFFLINE=0` no `.env` e, depois do download, troque para `1` para rodar offline. A chamada
+  ao Groq sempre usa a rede.
 
-## Comandos
+### Tipos de pergunta
 
-| Comando | O que faz |
+O Groq converte a pergunta em um plano (modo, empresas, tecnologias, lugares, pessoas, anos, tópicos)
+e o CLI imprime a interpretação em uma linha (`modo: ... | empresas: ...`) antes da resposta.
+
+| Modo | Quando | O que imprime | Exemplo |
+|---|---|---|---|
+| `busca` | pergunta que pede explicação | resposta do LLM + os `--limit` documentos mais relevantes | `uv run rag-shift "o que foi dito sobre ChatGPT na educação?"` |
+| `lista` | pede notícias ou matérias de algo | matérias filtradas, mais recentes primeiro (sem LLM de resposta, sem embeddings) | `uv run rag-shift "liste as notícias sobre a Nvidia" --limit 10` |
+| `contagem` | "quantos", "quais mais aparecem" | totais e ranking, calculados em Python sobre os arquivos processados (~3 s) | `uv run rag-shift "quais empresas mais aparecem em 2024?"` |
+| `resumo` | pede o que traz uma matéria pelo título | resumo do texto inteiro da matéria (sem embeddings) | `uv run rag-shift "o que traz a matéria IA Agêntica expõe a gestão?"` |
+
+Regras dos filtros:
+
+- Entre campos vale E, dentro de um campo vale OU. O tópico casa com qualquer tópico da matéria.
+- As entidades são casadas com o vocabulário do corpus ("NVIDIA" vira "Nvidia"). As que não existem
+  viram só busca semântica, com aviso.
+- Se a busca com filtro não achar nada, ela repete sem o filtro. Se a matéria do `resumo` não for
+  achada pelo título, cai na busca.
+- Na busca, a pergunta original (não uma versão reescrita) é a que vira embedding.
+
+### Saída
+
+Cada documento ou matéria mostra a data do email no fuso de Brasília e o caminho
+`edição > seção > título`. É a data em que a The Shift publicou, não a dos artigos citados. Abaixo vêm
+as **fontes**: os links da matéria, com o título quando o link é um item de lista (na lista de matérias,
+só os 3 primeiros e a contagem do resto). Vídeos do YouTube e links de rodapé são ignorados.
+
+```
+0,893 - IA Agêntica expõe a gestão
+   19/11/2025 - Inteligência Aumentada > IA Agêntica expõe a gestão
+   Fontes:
+   - The Shift: https://theshift.info/hot/quatro-tensoes-redesenham-a-gestao-na-era-da-ia-agentica/
+```
+
+## Referência do CLI
+
+### `rag-shift "pergunta"`
+
+| Opção | O que faz |
 |---|---|
-| `uv run rag-shift "pergunta"` | Interpreta a pergunta (busca, lista ou contagem, com filtros) e responde |
-| `uv run rag-shift-build` | Aplica o chunking estrutural nos emails brutos e grava `the-shift-mails-processed/` |
-| `uv run rag-shift-enrich` | Extrai empresas, tecnologias, lugares, pessoas e tópicos de cada matéria com um LLM e grava em `enrichment` |
+| `pergunta` | obrigatória, entre aspas |
+| `--limit N` | itens mostrados na busca e na lista (padrão: `TOP_K` do `.env`) |
+| `--modo {busca,lista,contagem,resumo}` | força o modo, ignorando o que o LLM entendeu |
+| `--sem-filtro` | só a busca semântica: não interpreta a pergunta nem filtra (uma chamada a menos ao Groq). Dá para combinar com `--modo` |
+| `-h`, `--help` | ajuda |
 
-Use `--help` em qualquer um dos três para ver as opções.
+### `rag-shift-build`
 
-## Perguntas, filtros e contagens
+Lê `the-shift-mails-outputs/`, aplica o chunking estrutural, captura os links e grava
+`the-shift-mails-processed/`, preservando o `enrichment` das matérias que não mudaram. Não tem opções
+além de `--help`.
 
-O Groq converte a pergunta em um plano (modo, empresas, tecnologias, lugares, pessoas, anos, tópicos).
-As entidades são casadas com o vocabulário do corpus (ex.: "NVIDIA" vira "Nvidia"); as que não existem
-vão para a busca semântica, com aviso. Entre campos vale E, dentro de um campo vale OU.
+### `rag-shift-enrich`
 
-```bash
-uv run rag-shift "quantas matérias sobre cibersegurança em 2022?"   # contagem, só Python, ~3 s
-uv run rag-shift "quais empresas mais aparecem em 2024?"            # ranking
-uv run rag-shift "liste as notícias sobre a Nvidia" --limit 10      # lista, mais recentes primeiro
-uv run rag-shift "o que foi dito sobre ChatGPT na educação?"        # busca semântica com filtro
-uv run rag-shift "o que traz a matéria IA Agêntica expõe a gestão?"  # resumo de uma matéria pelo título
-```
+Extrai empresas, tecnologias, lugares, pessoas e tópicos de cada matéria com um LLM e grava em
+`enrichment`. Retomável: pula o que já foi feito. Precisa de `ENRICH_API_KEY`, `ENRICH_BASE_URL` e
+`ENRICH_MODEL` no `.env` (qualquer API compatível com a da OpenAI; o projeto usa
+`openai/gpt-oss-120b` na DeepInfra).
 
-Opções: `--limit N` (itens mostrados, padrão `TOP_K`), `--modo {busca,lista,contagem,resumo}` (força o modo) e
-`--sem-filtro` (só a busca semântica, sem interpretar a pergunta). Se o filtro não achar nada, a busca repete sem ele.
-
-## Enriquecimento
-
-Opcional. O resultado vai para o payload dos chunks no Qdrant (`year`, `companies`, `technologies`,
-`places`, `people`, `topics`), usado pelos filtros acima. Precisa de `ENRICH_API_KEY`, `ENRICH_BASE_URL` e `ENRICH_MODEL`
-no `.env` (qualquer API compatível com a da OpenAI; o projeto usa `openai/gpt-oss-120b` na DeepInfra).
-
-```bash
-uv run rag-shift-enrich --limit 20   # teste com poucas matérias
-uv run rag-shift-enrich              # corpus inteiro; retomável (pula o que já está feito)
-uv run rag-shift-enrich --retry-failed
-```
+| Opção | O que faz |
+|---|---|
+| `--limit N` | processa no máximo N matérias (para testar) |
+| `--workers N` | chamadas em paralelo (padrão: 8) |
+| `--retry-failed` | reprocessa as matérias com status `failed` ou `rate_limited` |
+| `--normalize-only` | só reaplica a normalização (limpeza, bloqueio, aliases e grafia canônica), sem chamar o LLM |
 
 Cada matéria recebe um `status` (`ok`, `empty`, `failed`, `rate_limited`). Critérios, tópicos e
-aliases estão em `to-do/enriquecimento.md`.
+aliases estão em `to-do/enriquecimento.md`. O enrichment vai para o payload dos chunks no Qdrant
+(`year`, `companies`, `technologies`, `places`, `people`, `topics`).
 
-## Primeira execução
+### Variáveis do `.env` (veja `env.template`)
 
-- **Demora cerca de 12 min**: os chunks processados são vetorizados em CPU. O resultado fica em `.cache/`; as próximas execuções levam ~10 s. Se mudar o corpus, o chunking, o modelo ou o enrichment, rode `rag-shift-build` de novo e apague `.cache/`.
-- **Precisa de internet** para baixar o modelo de embeddings e o tokenizer do NLTK. Deixe `HF_HUB_OFFLINE=0` no `.env` e, depois do download, troque para `1` para rodar offline.
-- A chamada ao Groq sempre usa a rede.
+| Variável | Para quê |
+|---|---|
+| `GROQ_API_KEY`, `MODEL` | resposta e interpretação da pergunta (Groq) |
+| `COLLECTION`, `EMBEDDING_MODEL`, `VECTOR_SIZE` | coleção do Qdrant e modelo de embeddings (384 dimensões para o e5-small) |
+| `TOP_K` | documentos mostrados por padrão (`--limit`) |
+| `CHUNK_SIZE` | tamanho máximo do chunk, em caracteres; mudar exige rebuild e apagar o cache |
+| `HF_HUB_OFFLINE` | `0` para baixar o modelo, `1` para rodar offline |
+| `ENRICH_API_KEY`, `ENRICH_BASE_URL`, `ENRICH_MODEL` | só para o `rag-shift-enrich` |
