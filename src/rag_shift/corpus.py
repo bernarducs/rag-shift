@@ -130,16 +130,24 @@ def load_corpus() -> list[dict]:
     return chunks
 
 
-def load_processed() -> dict[int, dict]:
+def mail_key(item: dict) -> tuple[int, str]:
+    """Chave única do email, para o processado ou para o payload de um chunk.
+
+    O `mail_id` sozinho se repete (865 emails, 557 ids), então entra a data.
+    """
+    return item["mail_id"], item["date"]
+
+
+def load_processed() -> dict[tuple[int, str], dict]:
     return {
-        mail["mail_id"]: mail
+        mail_key(mail): mail
         for mail in (load_mail(path) for path in sorted(PROCESSED_DIR.glob("*.json")))
     }
 
 
-def find_links(doc: dict, processed: dict[int, dict]) -> list[dict]:
+def find_links(doc: dict, processed: dict[tuple[int, str], dict]) -> list[dict]:
     """Links da matéria de um chunk (payload do índice), achada pelo texto do chunk."""
-    mail = processed.get(doc["mail_id"])
+    mail = processed.get(mail_key(doc))
     for section in mail["sections"] if mail else []:
         if doc["text"] in section["chunks"]:
             return section.get("links", [])
