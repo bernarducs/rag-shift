@@ -290,9 +290,12 @@ e ~220 de saída por matéria no free tier. O script de validação não foi ver
   - **aliases só de grafia e renomeação**, sem juntar subsidiárias (WhatsApp, Instagram e YouTube
     continuam separados de Meta e Google, para permitir busca por palavras-chave mais finas):
     Alphabet → Google (confirmado), Facebook → Meta, Twitter → X, Open AI → OpenAI, Amazon Web
-    Services → AWS, Estados Unidos / EUA (escolher a forma), IA Generativa / GenAI → IA generativa.
-    A lista final se revisa **depois** de rodar o corpus, com as ~150 entidades mais frequentes;
-    não custa reextração.
+    Services → AWS. Aliases defensivos já criados em `ALIASES` (`enrichment.py`), para grafias, siglas
+    e nomes por extenso da mesma entidade: Bacen / Banco Central do Brasil → Banco Central, J.P.
+    Morgan → JPMorgan, Fed → Federal Reserve, OMS, ONU, BNDES, CVM, ANPD, EUA / UK / UE em `places`,
+    GenAI e variações → IA generativa, LLM e variações → LLMs, e-commerce, entre outros. Hífens
+    tipográficos viram "-". A lista final se revisa **depois** de rodar o corpus, com as ~150
+    entidades mais frequentes; reaplicar é `rag-shift-enrich --normalize-only`, sem reextração.
 - **Status por matéria** (a gravar em `enrichment`): `ok`, `empty` (nenhuma entidade; revisar, porque
   uma resposta sem sentido também passa na validação com tudo vazio), `failed` e `rate_limited`
   (429; resolve-se esperando), mais `error` e `attempts`.
