@@ -12,12 +12,12 @@ Protótipo de RAG (CLI) sobre emails da The Shift. Python 3.12, gerenciado com `
 ## Estrutura (`src/rag_shift/`)
 - `config.py`: caminhos e prompt; carrega o `.env` em `os.environ` (os módulos leem `os.environ[...]` onde usam: modelo, coleção, TOP_K, CHUNK_SIZE, chaves do Groq); deve ser importado antes de `sentence_transformers` (o `HF_HUB_OFFLINE` é lido no import)
 - `preprocessing.py`: chunking estrutural. `normalize` (= `tidy(strip_urls(prepare(body)))`: rodapé, URLs, escapes, preservando os `\n`; `link_text` é o mesmo texto com as URLs), `split_sections` (títulos `** Título` + linha de traços; 1º título = edição; título em maiúsculas sem corpo = seção), `strip_boilerplate`, `split_paragraphs` (2+ quebras), `chunk_section` (agrupa até `CHUNK_SIZE`; parágrafo longo cai para sentenças via nltk) `extract_links` (links de uma matéria: título só em item de lista `* Título (url)`, URL sem `utm_*`, deduplicada; descarta YouTube, WhatsApp, Mailchimp, assinatura/institucional do `theshift.info`, ícones de redes sociais; `theshift.info/hot` e `/talk` ficam) e `heading_path` (`edição > seção > título`)
-- `corpus.py`: `process_mail` (bruto -> sections/chunks), `build_processed` (grava `the-shift-mails-processed/`, preservando o `enrichment` por `hash` da matéria), `load_corpus` (lê o processado e achata em payloads com edition, section, title), `links_by_heading` (atribui os links a cada seção; se os títulos do texto com URLs não batem com os do normalizado, o email fica sem links e o build avisa), `load_processed` e `find_links` (acha os links da matéria de um chunk pelo texto, sem mudar o payload do índice nem o `.cache/`)
+- `corpus.py`: `process_mail` (bruto -> sections/chunks), `build_processed` (grava `the-shift-mails-processed/`, preservando o `enrichment` por `hash` da matéria), `load_corpus` (lê o processado e achata em payloads com edition, section, title, `year` e as listas do `enrichment`: companies, technologies, places, people, topics), `links_by_heading` (atribui os links a cada seção; se os títulos do texto com URLs não batem com os do normalizado, o email fica sem links e o build avisa), `load_processed` e `find_links` (acha os links da matéria de um chunk pelo texto, sem mudar o payload do índice nem o `.cache/`)
 - `build.py`: ponto de entrada `rag-shift-build`
 - `enrichment.py`: schema Pydantic (`companies`, `technologies`, `places`, `people`, `topics` com 13 tópicos fechados), prompt, chamada ao LLM (API compatível com a da OpenAI: `ENRICH_API_KEY`, `ENRICH_BASE_URL`, `ENRICH_MODEL`) e normalização determinística (lista de bloqueio, sufixos societários exceto depois de `&`, espaços e hifens Unicode, aliases só de grafia/sigla/nome por extenso e sem juntar subsidiárias, grafia canônica por frequência dentro de um grupo que ignora acento, caixa, espaço e pontuação, mantendo o `+` e o ponto entre dígitos; empate vai para a grafia com mais acentos), reaplicável com `renormalize` + `canonicalize`
 - `enrich.py`: ponto de entrada `rag-shift-enrich`; uma chamada por matéria em paralelo, grava `enrichment` com `status` (`ok`, `empty`, `failed`, `rate_limited`), retomável
 - `embeddings.py`: modelo SentenceTransformer e cache em `.cache/`; o texto embeddado é `heading_path + texto`
-- `index.py`: Qdrant em memória, coleção `the-shift-mails`, `Distance.COSINE`
+- `index.py`: Qdrant em memória, coleção `the-shift-mails`, `Distance.COSINE`; índices de payload `keyword` em companies, technologies, places, people, topics e `integer` em year
 - `retriever.py`: top 5, um resultado por email (maior score)
 - `generator.py`: resposta via Groq (`GROQ_API_KEY`, `MODEL`)
 - `cli.py`: ponto de entrada (`rag-shift`), argparse e checagem das variáveis obrigatórias do `.env`
@@ -35,7 +35,7 @@ Protótipo de RAG (CLI) sobre emails da The Shift. Python 3.12, gerenciado com `
 
 ## Cuidados
 - `.env`, `.cache/` e o conteúdo de `the-shift-mails-outputs/` e `the-shift-mails-processed/` não vão para o git (só os `.gitkeep`)
-- Mudar corpus, `CHUNK_SIZE` ou `EMBEDDING_MODEL` exige apagar `.cache/`
+- Mudar corpus, `CHUNK_SIZE`, `EMBEDDING_MODEL` ou o `enrichment` (que vai no `chunks.json`) exige apagar `.cache/embeddings.npy` e `.cache/chunks.json`
 - O `hash` da seção vem só do texto normalizado, então `links` não o altera e o `enrichment` sobrevive ao build; ao mexer em `normalize` e afins, conferir que os `hash` não mudam
 - Os `\r\n\t` do corpus já são whitespace real após `json.load`; a limpeza é feita com regex, não com nltk
 - A hierarquia do texto vem do número de `\n` (1 = linha/bullet, 2 = parágrafo, 3+ = novo título); por isso `normalize` não colapsa as quebras

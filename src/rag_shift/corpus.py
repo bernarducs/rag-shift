@@ -76,6 +76,12 @@ def flatten(processed: dict) -> list[dict]:
             "section": section["section"],
             "title": section["title"],
             "text": text,
+            # o ano vem sempre da data, mesmo sem enrichment; as listas viram [] se faltarem
+            "year": int(processed["date"][:4]),
+            **{
+                field: section["enrichment"].get(field, [])
+                for field in ("companies", "technologies", "places", "people", "topics")
+            },
         }
         for section in processed["sections"]
         for text in section["chunks"]

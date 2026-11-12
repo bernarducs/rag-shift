@@ -375,7 +375,7 @@ como título, e um texto-modelo esquecido na newsletter).
 2. Implementar a extração no pacote (`src/rag_shift/`): Groq direto, chamadas em paralelo (8 a 16),
    por email, com retomada e status; gravar em `enrichment` dos arquivos processados (o
    `build_processed` já preserva por `hash`).
-3. Copiar o `enrichment` para o payload dos chunks e criar o índice de payload no Qdrant.
+3. ~~Copiar o `enrichment` para o payload dos chunks e criar o índice de payload no Qdrant.~~ (feito; a grafia canônica da NVIDIA no corpus é "Nvidia")
 4. Entender a pergunta (filtro e contagem) e ajustar a saída do CLI. Sugestão: LLM com tool calling
    gera `{modo: busca|lista|contagem, empresas, anos, tópicos, consulta}`; empresas casadas contra o
    vocabulário normalizado; contagens calculadas em Python sobre os arquivos processados, sem LLM.
