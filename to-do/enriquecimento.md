@@ -294,8 +294,11 @@ e ~220 de saída por matéria no free tier. O script de validação não foi ver
     e nomes por extenso da mesma entidade: Bacen / Banco Central do Brasil → Banco Central, J.P.
     Morgan → JPMorgan, Fed → Federal Reserve, OMS, ONU, BNDES, CVM, ANPD, EUA / UK / UE em `places`,
     GenAI e variações → IA generativa, LLM e variações → LLMs, e-commerce, entre outros. Hífens
-    tipográficos viram "-". A lista final se revisa **depois** de rodar o corpus, com as ~150
-    entidades mais frequentes; reaplicar é `rag-shift-enrich --normalize-only`, sem reextração.
+    tipográficos viram "-". Segunda rodada (depois do corpus
+    inteiro): variantes de grafia de empresas e tecnologias (PitchBook, Stanford University, Bain &
+    Company, Cingapura, chatbot/chatbots, versões de modelo mantidas separadas etc.) e Grã-Bretanha →
+    Reino Unido. Reaplicar é `rag-shift-enrich --normalize-only` (limpeza, bloqueio, aliases e grafia
+    canônica sobre o que já está gravado), sem reextração.
 - **Status por matéria** (a gravar em `enrichment`): `ok`, `empty` (nenhuma entidade; revisar, porque
   uma resposta sem sentido também passa na validação com tudo vazio), `failed` e `rate_limited`
   (429; resolve-se esperando), mais `error` e `attempts`.
@@ -331,6 +334,33 @@ usuário e da documentação (lida em 2026-11):
 - **Plataformas sociais** (Instagram, TikTok, YouTube) saem em `technologies` numa matéria; fica
   assim, em linha com a decisão de não juntar subsidiárias.
 - Limite: amostras pequenas e sem gabarito de tópicos; a conferência foi manual, por leitura.
+
+### Resultado da extração do corpus inteiro (2026-11)
+
+7.452 matérias: 7.435 `ok`, 17 `empty`, 0 `failed`, 0 `rate_limited`, nenhuma com retry. Das 17 `empty`,
+11 são seções curtas legítimas e 6 são artefatos do chunking (frase solta de 15 a 48 caracteres tomada
+como título, e um texto-modelo esquecido na newsletter).
+
+- **Tópico principal:** IA e dados 24,7%, trabalho/pessoas/liderança 21,9%, startups 9,6%, estratégia
+  9,4%, cibersegurança 6,2%, deep tech 5,7%, energia 5,6%, finanças digitais 4,7%, consumo 4,1%,
+  regulação 2,9%, sociedade 2,2%, saúde 2,0%, mobilidade 1,0%. Nenhum acima de 35% nem abaixo de 1%.
+  66% das matérias têm 2 tópicos, 27% têm 1 e 7% têm 3.
+- **Por edição:** CiberInteligência 91% cibersegurança, Inteligência Aumentada 68% IA, Inteligência
+  Aplicada 57% IA, Economia Digital 35% startups; Contexto da Ruptura 67% trabalho/liderança (o
+  conteúdo de segunda-feira é majoritariamente gestão e liderança).
+- **Entidades:** 6,2 mil empresas, 6,5 mil tecnologias, 619 lugares e 3,5 mil pessoas distintas;
+  72% a 78% aparecem em uma só matéria (cauda longa), então filtros valem sobretudo para as ~500
+  mais frequentes.
+- **Normalização reaplicada** com a 2ª rodada de aliases e correções (sufixo depois de "&", espaços e
+  hifens Unicode): 410 matérias ajustadas, sem perda de entidade e sem mudar status; a segunda
+  execução ajusta 0.
+- **Grupo de grafias:** a grafia canônica passou a ser escolhida por uma chave que ignora acento,
+  caixa, espaço e pontuação (mantendo o "+", para Disney+ e Copilot+ ficarem separados de Disney e
+  Copilot, e o ponto entre dígitos, para GPT-3.5 não colidir com GPT-35); no empate, vence a grafia com
+  mais acentos. Resolveu de uma vez Visual Capitalist, Scale AI, Character.AI, Llama-2/Llama 2,
+  multicloud/multi-cloud e semelhantes: 168 matérias ajustadas, 0 grupos com 2+ grafias em empresas,
+  tecnologias, lugares e pessoas, e a segunda execução ajusta 0. Empates sem critério claro (GPT 5.5 ×
+  GPT-5.5, Claude.ai × Claude AI) caem na ordem alfabética, de forma determinística.
 
 ### Pontos em aberto
 

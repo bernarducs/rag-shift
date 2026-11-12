@@ -9,7 +9,7 @@ from pathlib import Path
 import rag_shift.config  # noqa: F401  (carrega o .env antes dos demais imports)
 from rag_shift.config import PROCESSED_DIR
 from rag_shift.corpus import load_mail
-from rag_shift.enrichment import build_client, canonicalize, enrich_section
+from rag_shift.enrichment import build_client, canonicalize, enrich_section, renormalize
 
 REQUIRED_ENV = ["ENRICH_API_KEY", "ENRICH_BASE_URL", "ENRICH_MODEL"]
 # estados que o --retry-failed reprocessa; "empty" só se refaz apagando o enrichment
@@ -39,7 +39,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--normalize-only",
         action="store_true",
-        help="só reaplica a normalização (aliases, bloqueio, grafia canônica), sem chamar o LLM",
+        help="só reaplica a normalização (limpeza, bloqueio, aliases e grafia canônica), sem chamar o LLM",
     )
     return parser.parse_args()
 
@@ -58,7 +58,10 @@ def needs_work(section: dict, retry_failed: bool) -> bool:
 
 def normalize_corpus(mails: dict[Path, dict]) -> int:
     sections = [s for mail in mails.values() for s in mail["sections"]]
-    changed = canonicalize(sections)
+    # primeiro a limpeza e os aliases (regras novas valem para o que já foi gravado),
+    # depois a grafia canônica por frequência
+    changed = renormalize(sections)
+    changed += canonicalize(sections)
     if changed:
         for path, mail in mails.items():
             save(path, mail)
