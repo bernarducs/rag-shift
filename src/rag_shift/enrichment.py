@@ -75,23 +75,64 @@ ALIASES = {
     "companies": {
         "alphabet": "Google",
         "facebook": "Meta",
+        "meta platforms": "Meta",
         "twitter": "X",
         "open ai": "OpenAI",
         "amazon web services": "AWS",
+        "jp morgan": "JPMorgan",
+        "j.p. morgan": "JPMorgan",
+        "jpmorgan chase": "JPMorgan",
+        "bacen": "Banco Central",
+        "bcb": "Banco Central",
+        "banco central do brasil": "Banco Central",
+        "federal reserve": "Federal Reserve",
+        "fed": "Federal Reserve",
+        "banco nacional de desenvolvimento economico e social": "BNDES",
+        "comissao de valores mobiliarios": "CVM",
+        "autoridade nacional de protecao de dados": "ANPD",
+        "agencia nacional de protecao de dados": "ANPD",
+        "organizacao mundial da saude": "OMS",
+        "world health organization": "OMS",
+        "who": "OMS",
+        "organizacao das nacoes unidas": "ONU",
+        "nacoes unidas": "ONU",
+        "united nations": "ONU",
+        "mercadolibre": "Mercado Livre",
+        "tik tok": "TikTok",
     },
     "technologies": {
         "genai": "IA generativa",
         "gen ai": "IA generativa",
+        "ai generativa": "IA generativa",
+        "inteligencia artificial generativa": "IA generativa",
+        "generative ai": "IA generativa",
+        "chat gpt": "ChatGPT",
+        "llm": "LLMs",
+        "large language models": "LLMs",
+        "grandes modelos de linguagem": "LLMs",
+        "agentes de inteligencia artificial": "agentes de IA",
+        "ai agents": "agentes de IA",
+        "multiagent systems": "Multi-agent Systems",
+        "ecommerce": "e-commerce",
+        "e commerce": "e-commerce",
     },
     "places": {
         "eua": "Estados Unidos",
         "ee.uu.": "Estados Unidos",
         "us": "Estados Unidos",
         "usa": "Estados Unidos",
+        "uk": "Reino Unido",
+        "ue": "União Europeia",
+        "eu": "União Europeia",
+        "european union": "União Europeia",
+        "emirados arabes": "Emirados Árabes Unidos",
+        "eau": "Emirados Árabes Unidos",
     },
     "people": {},
 }
 
+# hifens tipográficos (ex.: "e‑commerce" com hífen não separável) viram "-"
+_HYPHENS = re.compile("[\u2010\u2011\u2012]")
 _SUFFIX = re.compile(
     r"[\s,]+(inc|corp|corporation|ltd|ltda|s\.?\s?a|llc|gmbh|plc|co|company)\.?$",
     re.IGNORECASE,
@@ -107,7 +148,7 @@ def entity_key(name: str) -> str:
 
 
 def clean_name(name: str, field: str) -> str:
-    name = name.strip(_EDGE)
+    name = _HYPHENS.sub("-", name).strip(_EDGE)
     if field == "companies":
         # remove sufixos societários repetidos ("Foo Co., Ltd.")
         while True:
