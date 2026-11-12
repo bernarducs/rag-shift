@@ -1,7 +1,8 @@
 # Enriquecimento das matérias
 
-> **Status: experimento concluído (2026-11); decisão: Groq direto com JSON schema, modelo
-> `openai/gpt-oss-120b`. Implementação ainda não feita.** GLiNER e LangExtract foram descartados.
+> **Status: experimento concluído (2026-11); decisão: chamada direta com JSON schema, modelo
+> `openai/gpt-oss-120b`, na DeepInfra (API compatível com a da OpenAI; o experimento rodou no Groq). Critérios de entidades, tópicos e aliases fechados e validados em 48
+> matérias (ver "Especificação"). Implementação ainda não feita.** GLiNER e LangExtract foram descartados.
 > Os números estão em "Resultado do experimento". As seções "Alternativas" e "Desempenho esperado"
 > são o texto original, escrito antes do experimento (de memória, não medido).
 
@@ -235,48 +236,109 @@ com retomada ao longo de semanas (ver "Retomada e falhas") ou testar o `llama-3.
 
 ### Especificação para a implementação
 
-- **Campos:** `year` (derivado de `date`, sem LLM), `companies`, `technologies`, `topics` (lista
-  fechada). `people` foi extraído no experimento, mas não foi revisado; decidir se entra (custa
-  tokens e serve pouco ao filtro).
-- **Tópicos (rascunho, ainda sem revisão):** inteligência artificial; cibersegurança; cripto e
-  blockchain; fintech e pagamentos; startups e venture capital; big techs; semicondutores e hardware;
-  regulação e políticas públicas; sustentabilidade e clima; trabalho e recursos humanos; liderança e
-  gestão; marketing e varejo; saúde e biotecnologia; mobilidade e energia; pesquisa e ciência.
-  A qualidade dos tópicos do Groq não foi avaliada (não houve gabarito).
-- **Esquema Pydantic:**
-  `companies: list[str]`, `technologies: list[str]`, `people: list[str]`,
-  `topics: list[Literal[<tópicos acima>]]`, todos com `default_factory=list`.
-- **Prompt (sistema):** pede metadados de uma matéria da newsletter The Shift em português:
-  `companies` (empresas e organizações, nome oficial curto, ex.: "Nvidia", "Google", sem sufixos como
-  Inc/S.A.), `technologies` (tecnologias, produtos e modelos, ex.: "ChatGPT", "computação quântica"),
-  `people` (pessoas citadas pelo nome) e `topics` (1 a 3, exclusivamente da lista). Termina com
+Critérios fechados com o usuário (2026-11) e validados com o Groq em duas amostras: 32 matérias
+(sorteio estratificado por ano, semente 42, mais 2 do fallback; não é a mesma amostra do experimento) e 16 dirigidas por rótulo
+de seção para exercitar os tópicos raros. 48 de 48 sem falha, sem retry; ~1,3 mil tokens de entrada
+e ~220 de saída por matéria no free tier. O script de validação não foi versionado (ficou em `.cache/`); este texto é o registro.
+
+- **Campos:** `year` (derivado de `date`, sem LLM), `companies`, `technologies`, `places`, `people`,
+  `topics` (lista fechada, 1 a 3, o primeiro é o principal). `people` segue sem gabarito; decidir se
+  fica (custa tokens e serve pouco ao filtro). O tema do dia (`edition`, ex.: Contexto da Ruptura,
+  Economia Digital, Inteligência Aumentada, Futuro do Presente) já está no payload sem LLM; os tópicos
+  são transversais a ele.
+- **Critério de entidades:**
+  - `companies`: empresas e organizações, inclusive órgãos públicos e reguladores (ANAC, Bacen),
+    universidades e ONGs; nome curto oficial, sem sufixo. Fora: a própria "The Shift".
+  - `technologies`: produtos, modelos, plataformas, subáreas **e conceitos** tecnológicos
+    ("ChatGPT", "Pix", "IA generativa", "tokenização"). Fora: termos genéricos isolados ("IA", "AI",
+    "inteligência artificial", "tecnologia", "app", "API", "dados", "nuvem").
+  - `places`: países, estados, cidades e blocos.
+- **Tópicos (13, sem sobreposição; escopo vai no prompt):**
+  1. inteligência artificial e dados: IA, IA generativa, LLMs, agentes, data science, analytics
+  2. cibersegurança e privacidade: ataques, segurança da informação, proteção de dados, LGPD
+  3. finanças digitais e cripto: open finance, bancos digitais, fintechs, pagamentos, Pix, cripto, DeFi, web3
+  4. startups e investimentos: empreendedorismo, venture capital, CVC, rodadas, fusões e aquisições
+  5. estratégia e negócios digitais: estratégia corporativa, transformação digital, inovação nas empresas, disputa entre big techs, resultados
+  6. trabalho, pessoas e liderança: RH, carreira, cultura organizacional, gestão, liderança, diversidade, futuro do trabalho
+  7. consumo, marketing e varejo: comportamento do consumidor, CX, publicidade, e-commerce, varejo
+  8. deep tech e infraestrutura: semicondutores, cloud, data centers, telecom/5G, computação quântica, robótica, espaço
+  9. saúde e biotecnologia: healthtech, ciências da vida, biotecnologia
+  10. energia, clima e sustentabilidade: transição energética, ESG, clima, COP
+  11. mobilidade e cidades: veículos elétricos e autônomos, transporte, smart cities
+  12. regulação, governo e geopolítica: leis, regulação de IA e de plataformas, antitruste, políticas públicas, disputa EUA-China
+  13. sociedade, educação e cultura: impactos sociais, educação, mídia, entretenimento, desinformação, bem-estar
+
+  Desempate (no prompt): classificar pelo assunto, não pelo setor das empresas; tópico 1 só se a IA
+  for o assunto central (IA no RH → 6; IA e trabalho → 6 com 1 secundário); veículo elétrico → 11;
+  regulação de um setor → 12 com o setor secundário.
+- **Esquema Pydantic:** `companies`, `technologies`, `places`, `people`: `list[str]`;
+  `topics: list[Literal[<13 tópicos>]]`; todos com `default_factory=list`.
+- **Prompt (sistema):** descrição dos campos acima, lista de tópicos com escopo, regras de desempate e
   "Inclua só o que está no texto; não invente. Se não houver, devolva lista vazia." Usuário: título
   completo (`heading_path`) + texto da matéria.
 - **Chamada:** `response_format={"type": "json_schema", ...}` com `Enrichment.model_json_schema()`,
   `reasoning_effort="low"`, `temperature=0`; na falha, 1 retry com `{"type": "json_object"}`.
-- **Normalização determinística** (aplicada às saídas, não confiar só no LLM): tirar espaços e
-  pontuação das pontas; remover sufixos societários (Inc, Corp, Ltd, Ltda, S.A., LLC, GmbH, PLC, Co);
-  chave de comparação sem acento e em minúsculas; forma canônica = grafia mais frequente por chave;
-  aliases. **Aliases iniciais (precisam de revisão):** Alphabet → Google (confirmado pelo usuário),
-  Facebook → Meta, Open AI → OpenAI, Microsoft Corporation → Microsoft, Amazon Web Services → AWS.
+- **Normalização determinística** (aplicada às saídas, não confiar só no LLM):
+  - **lista de bloqueio:** termos genéricos em `technologies` e "The Shift" em `companies`. "IA" e
+    "Inteligência Artificial" vazaram 4 vezes em `technologies` na 1ª validação. Depois reforcei o
+    prompt e apliquei a lista, e as 16 matérias dirigidas saíram sem termos genéricos, mas isso não
+    separa o efeito do prompt do efeito da lista; por isso a lista é obrigatória;
+  - tirar espaços e pontuação das pontas; remover sufixos societários (Inc, Corp, Corporation, Ltd,
+    Ltda, S.A., LLC, GmbH, PLC, Co, Company; "Group" só como último passo, conferir casos como
+    "Boston Consulting Group");
+  - chave de comparação sem acento e em minúsculas; forma canônica = grafia mais frequente por chave;
+  - **aliases só de grafia e renomeação**, sem juntar subsidiárias (WhatsApp, Instagram e YouTube
+    continuam separados de Meta e Google, para permitir busca por palavras-chave mais finas):
+    Alphabet → Google (confirmado), Facebook → Meta, Twitter → X, Open AI → OpenAI, Amazon Web
+    Services → AWS, Estados Unidos / EUA (escolher a forma), IA Generativa / GenAI → IA generativa.
+    A lista final se revisa **depois** de rodar o corpus, com as ~150 entidades mais frequentes;
+    não custa reextração.
 - **Status por matéria** (a gravar em `enrichment`): `ok`, `empty` (nenhuma entidade; revisar, porque
   uma resposta sem sentido também passa na validação com tudo vazio), `failed` e `rate_limited`
-  (429; resolve-se esperando), mais `error` e `attempts`. O experimento só guardava `error` (texto
-  bruto da exceção) e `attempts`.
+  (429; resolve-se esperando), mais `error` e `attempts`.
+
+### Provedor da extração: DeepInfra (2026-11)
+
+O corpus não cabe no plano gratuito do Groq (200 mil tokens/dia, mais de 50 dias). A extração roda
+na DeepInfra, com o mesmo modelo, `openai/gpt-oss-120b` (bfloat16, contexto de 131.072). Dados do
+usuário e da documentação (lida em 2026-11):
+
+- **Preço:** US$ 0,037 por 1M de entrada e US$ 0,17 por 1M de saída. Estimativa para as 7.452
+  matérias: ~US$ 0,57 (~1,1 mil tokens de entrada e ~200 de saída por matéria, medidos).
+- **API:** compatível com a da OpenAI, `base_url` `https://api.deepinfra.com/v1/openai`; usa o SDK
+  `openai` (dependência nova). `reasoning_effort` vai por `extra_body`.
+- **Limites:** 200 requisições simultâneas por modelo; 429 quando excede. Não achei limite diário de
+  tokens nem de tokens/min, mas não conferi os limites da conta e da chave.
+- **Teste de fumaça (32 matérias da 1ª amostra, `json_schema` strict + `reasoning_effort="low"`):**
+  32 de 32 `ok`, 0 retry, ~5,5 s por chamada em sequência. Tópico principal igual ao do Groq em 30 das
+  32; entidades em comum: 48 de ~54 empresas, 40 de ~50 tecnologias, 33 de 35 lugares. A comparação é
+  aproximada (o Groq rodou essa amostra com o prompt antigo); mostra que a DeepInfra não é pior.
+- **Chave no `.env`:** sugestão `ENRICH_API_KEY`, `ENRICH_BASE_URL` e `ENRICH_MODEL`, separadas da
+  `GROQ_API_KEY` da geração das respostas (que continua no Groq).
+- **Tempo estimado:** ~45 min com 16 chamadas em paralelo (~20 min com 32).
+
+### Resultado da validação dos critérios
+
+- **Tópicos:** o principal mais frequente foi "inteligência artificial e dados" (9 de 32, 28%). Na
+  1ª amostra, cibersegurança, consumo, saúde e energia não saíram como principal; na dirigida, os
+  quatro saíram, em geral nas matérias esperadas. Não conferi um a um se todos os 13 apareceram. O cruzamento com o tema do dia ficou
+  coerente. "Garimpo do dia" recebe 3 tópicos e mistura assuntos, como esperado.
+- **O rótulo de seção não é confiável como tópico:** ex.: "Esqueceram de trancar a porta dos fundos"
+  está em BIOTECNOLOGIA e é sobre cibersegurança. O LLM classificou pelo conteúdo, o que é o desejado.
+- **Plataformas sociais** (Instagram, TikTok, YouTube) saem em `technologies` numa matéria; fica
+  assim, em linha com a decisão de não juntar subsidiárias.
+- Limite: amostras pequenas e sem gabarito de tópicos; a conferência foi manual, por leitura.
 
 ### Pontos em aberto
 
-- **Critério de "tecnologia":** "IA" genérica conta? órgãos como ANAC e Bacen são empresas? Pix é
-  produto? países e cidades entram? Definir antes de rodar o corpus; é a maior fonte de divergência.
-- **Aliases:** revisar a lista acima e decidir como tratar controladoras e marcas.
-- **Qualidade de pessoas e tópicos:** não revisada.
-- **Cobertura do fallback:** os 11 emails sem títulos não entraram na amostra.
-- **Limite de tokens por dia no plano desenvolvedor:** não informado.
-- **Garimpo do dia:** entrou 3 vezes na amostra, sem análise separada.
+- **Qualidade de pessoas:** não revisada; decidir se o campo fica.
+- **Cobertura do fallback:** 2 emails sem títulos entraram na validação; os outros 9 não.
+- **Limites da conta e da chave na DeepInfra:** não conferidos; definir um limite de gasto na chave.
+- **Revisão dos aliases com dados reais**, depois da extração do corpus.
 
 ## Depois da escolha
 
-1. Fechar o critério de entidade, a lista de tópicos e os aliases (acima).
+1. ~~Fechar o critério de entidade, a lista de tópicos e os aliases~~ (feito, ver "Especificação"); falta só a revisão dos aliases com dados reais.
 2. Implementar a extração no pacote (`src/rag_shift/`): Groq direto, chamadas em paralelo (8 a 16),
    por email, com retomada e status; gravar em `enrichment` dos arquivos processados (o
    `build_processed` já preserva por `hash`).
