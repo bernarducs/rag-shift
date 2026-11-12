@@ -26,8 +26,23 @@ A saída é a resposta do LLM seguida dos 5 emails mais relevantes (`score - ass
 |---|---|
 | `uv run rag-shift "pergunta"` | Busca os trechos relevantes e responde com o Groq |
 | `uv run rag-shift-build` | Aplica o chunking estrutural nos emails brutos e grava `the-shift-mails-processed/` |
+| `uv run rag-shift-enrich` | Extrai empresas, tecnologias, lugares, pessoas e tópicos de cada matéria com um LLM e grava em `enrichment` |
 
-Use `--help` em qualquer um dos dois para ver as opções.
+Use `--help` em qualquer um dos três para ver as opções.
+
+## Enriquecimento
+
+Opcional e ainda não usado pela busca. Precisa de `ENRICH_API_KEY`, `ENRICH_BASE_URL` e `ENRICH_MODEL`
+no `.env` (qualquer API compatível com a da OpenAI; o projeto usa `openai/gpt-oss-120b` na DeepInfra).
+
+```bash
+uv run rag-shift-enrich --limit 20   # teste com poucas matérias
+uv run rag-shift-enrich              # corpus inteiro; retomável (pula o que já está feito)
+uv run rag-shift-enrich --retry-failed
+```
+
+Cada matéria recebe um `status` (`ok`, `empty`, `failed`, `rate_limited`). Critérios, tópicos e
+aliases estão em `to-do/enriquecimento.md`.
 
 ## Primeira execução
 
