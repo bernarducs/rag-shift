@@ -99,6 +99,27 @@ ALIASES = {
         "united nations": "ONU",
         "mercadolibre": "Mercado Livre",
         "tik tok": "TikTok",
+        "pitch book": "PitchBook",
+        "cbinsights": "CB Insights",
+        "j.p morgan": "JPMorgan",
+        "x.ai": "xAI",
+        "huggingface": "Hugging Face",
+        "ycombinator": "Y Combinator",
+        "eleven labs": "ElevenLabs",
+        "slinghub": "Sling Hub",
+        "sling & hub": "Sling Hub",
+        "stanford university": "Stanford",
+        "harvard university": "Harvard",
+        "perplexity ai": "Perplexity",
+        "mistral ai": "Mistral",
+        "sequoia": "Sequoia Capital",
+        "wharton": "Wharton School",
+        "new york times": "The New York Times",
+        "bain": "Bain & Company",
+        "bain &": "Bain & Company",
+        "bain&": "Bain & Company",
+        "natura &": "Natura",
+        "natura & co": "Natura",
     },
     "technologies": {
         "genai": "IA generativa",
@@ -115,6 +136,32 @@ ALIASES = {
         "multiagent systems": "Multi-agent Systems",
         "ecommerce": "e-commerce",
         "e commerce": "e-commerce",
+        "datacenters": "data centers",
+        "data center": "data centers",
+        "gpt4": "GPT-4",
+        "web 3": "Web3",
+        "deeptech": "deep tech",
+        "deep fakes": "deepfakes",
+        "chatbot": "chatbots",
+        "stablecoin": "stablecoins",
+        "agente de ia": "agentes de IA",
+        "modelo de linguagem": "modelos de linguagem",
+        "modelo de ia": "modelos de IA",
+        "google gemini": "Gemini",
+        "vibecoding": "vibe coding",
+        "fine tuning": "fine-tuning",
+        "zero-trust": "Zero Trust",
+        "lowcode": "low-code",
+        "low code": "low-code",
+        "chain-of-thought": "Chain of Thought",
+        "fintechs": "fintech",
+        "biotech": "biotecnologia",
+        "biotechs": "biotecnologia",
+        "seguranca cibernetica": "cibersegurança",
+        "criptomoeda": "criptomoedas",
+        "robotaxi": "robotáxis",
+        "chip de ia": "chips de IA",
+        "robo humanoide": "robôs humanoides",
     },
     "places": {
         "eua": "Estados Unidos",
@@ -127,14 +174,22 @@ ALIASES = {
         "european union": "União Europeia",
         "emirados arabes": "Emirados Árabes Unidos",
         "eau": "Emirados Árabes Unidos",
+        "cingapura": "Singapura",
+        "sao francisco": "San Francisco",
+        "washington d.c": "Washington DC",
+        "latino-america": "América Latina",
+        "latinoamerica": "América Latina",
+        "gra-bretanha": "Reino Unido",
     },
     "people": {},
 }
 
 # hifens tipográficos (ex.: "e‑commerce" com hífen não separável) viram "-"
 _HYPHENS = re.compile("[\u2010\u2011\u2012]")
+# espaços invisíveis (não separável, fino) viram espaço comum
+_SPACES = re.compile("[\u00a0\u2009\u200a\u202f]+")
 _SUFFIX = re.compile(
-    r"[\s,]+(inc|corp|corporation|ltd|ltda|s\.?\s?a|llc|gmbh|plc|co|company)\.?$",
+    r"(?<!&)[\s,]+(inc|corp|corporation|ltd|ltda|s\.?\s?a|llc|gmbh|plc|co|company)\.?$",
     re.IGNORECASE,
 )
 _EDGE = " \t\n.,;:!?\"'“”‘’()[]"
@@ -147,8 +202,19 @@ def entity_key(name: str) -> str:
     return re.sub(r"\s+", " ", plain).strip().lower()
 
 
+def group_key(name: str) -> str:
+    """Chave de agrupamento de grafias: ignora acento, caixa, espaço e pontuação.
+
+    Mantém o "+" (Disney+ e Copilot+ são produtos distintos de Disney e Copilot) e o
+    ponto entre dígitos (GPT-3.5 não pode colidir com GPT-35).
+    """
+    key = re.sub(r"(?<=\d)\.(?=\d)", "_", entity_key(name))
+    return re.sub(r"[^a-z0-9_+]", "", key)
+
+
 def clean_name(name: str, field: str) -> str:
-    name = _HYPHENS.sub("-", name).strip(_EDGE)
+    name = _SPACES.sub(" ", _HYPHENS.sub("-", name))
+    name = re.sub(r"\s{2,}", " ", name).strip(_EDGE)
     if field == "companies":
         # remove sufixos societários repetidos ("Foo Co., Ltd.")
         while True:
@@ -175,8 +241,35 @@ def normalize_values(values: list[str], field: str) -> list[str]:
     return result
 
 
+def renormalize(sections: list[dict]) -> int:
+    """Reaplica limpeza, bloqueio e aliases às listas já gravadas, sem chamar o LLM.
+
+    Altera as seções no lugar e devolve quantas mudaram.
+    """
+    changed = 0
+    for section in sections:
+        enrichment = section["enrichment"]
+        if enrichment.get("status") not in ("ok", "empty"):
+            continue
+        touched = False
+        for field in LIST_FIELDS:
+            new = normalize_values(enrichment.get(field, []), field)
+            if new != enrichment.get(field, []):
+                enrichment[field] = new
+                touched = True
+        changed += touched
+    return changed
+
+
+def accents(name: str) -> int:
+    return sum(unicodedata.category(c) == "Mn" for c in unicodedata.normalize("NFD", name))
+
+
 def canonicalize(sections: list[dict]) -> int:
-    """Uma grafia por entidade no corpus: a mais frequente por chave (aliases têm prioridade).
+    """Uma grafia por entidade no corpus: a mais frequente por grupo (aliases têm prioridade).
+
+    Grafias que só diferem em pontuação, espaço, acento ou caixa formam um grupo
+    (ex.: "Scale AI" e "ScaleAI").
 
     Altera as seções no lugar e devolve quantas mudaram.
     """
@@ -187,12 +280,13 @@ def canonicalize(sections: list[dict]) -> int:
             continue
         for field in LIST_FIELDS:
             for name in enrichment.get(field, []):
-                counts[field].setdefault(entity_key(name), Counter())[name] += 1
+                counts[field].setdefault(group_key(name), Counter())[name] += 1
 
-    # empate: a grafia que ordena primeiro, para o resultado ser determinístico
+    # empate: prefere a grafia com mais acentos ("L’Oréal"), depois a que ordena primeiro,
+    # para o resultado ser determinístico
     canonical = {
         field: {
-            key: sorted(spellings.items(), key=lambda item: (-item[1], item[0]))[0][0]
+            key: sorted(spellings.items(), key=lambda item: (-item[1], -accents(item[0]), item[0]))[0][0]
             for key, spellings in by_key.items()
         }
         for field, by_key in counts.items()
@@ -206,7 +300,7 @@ def canonicalize(sections: list[dict]) -> int:
         for field in LIST_FIELDS:
             new = []
             for name in enrichment.get(field, []):
-                name = ALIASES[field].get(entity_key(name), canonical[field][entity_key(name)])
+                name = ALIASES[field].get(entity_key(name), canonical[field][group_key(name)])
                 if name not in new:
                     new.append(name)
             if new != enrichment.get(field, []):
