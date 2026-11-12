@@ -32,7 +32,8 @@ Use `--help` em qualquer um dos três para ver as opções.
 
 ## Enriquecimento
 
-Opcional e ainda não usado pela busca. Precisa de `ENRICH_API_KEY`, `ENRICH_BASE_URL` e `ENRICH_MODEL`
+Opcional. O resultado vai para o payload dos chunks no Qdrant (`year`, `companies`, `technologies`,
+`places`, `people`, `topics`), que ainda não é usado pela busca. Precisa de `ENRICH_API_KEY`, `ENRICH_BASE_URL` e `ENRICH_MODEL`
 no `.env` (qualquer API compatível com a da OpenAI; o projeto usa `openai/gpt-oss-120b` na DeepInfra).
 
 ```bash
@@ -46,6 +47,6 @@ aliases estão em `to-do/enriquecimento.md`.
 
 ## Primeira execução
 
-- **Demora cerca de 12 min**: os chunks processados são vetorizados em CPU. O resultado fica em `.cache/`; as próximas execuções levam ~10 s. Se mudar o corpus, o chunking ou o modelo, rode `rag-shift-build` de novo e apague `.cache/`.
+- **Demora cerca de 12 min**: os chunks processados são vetorizados em CPU. O resultado fica em `.cache/`; as próximas execuções levam ~10 s. Se mudar o corpus, o chunking, o modelo ou o enrichment, rode `rag-shift-build` de novo e apague `.cache/`.
 - **Precisa de internet** para baixar o modelo de embeddings e o tokenizer do NLTK. Deixe `HF_HUB_OFFLINE=0` no `.env` e, depois do download, troque para `1` para rodar offline.
 - A chamada ao Groq sempre usa a rede.

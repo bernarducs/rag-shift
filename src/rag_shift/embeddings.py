@@ -19,7 +19,10 @@ def get_embeddings(model: SentenceTransformer) -> tuple[np.ndarray, list[dict]]:
     chunks_path = CACHE_DIR / "chunks.json"
     # reaproveita o cache para não reindexar o corpus a cada execução
     if vectors_path.exists() and chunks_path.exists():
-        return np.load(vectors_path), json.loads(chunks_path.read_text(encoding="utf-8"))
+        cached = json.loads(chunks_path.read_text(encoding="utf-8"))
+        if cached and "topics" not in cached[0]:
+            sys.exit("Cache antigo (sem enrichment no payload). Apague .cache/embeddings.npy e .cache/chunks.json.")
+        return np.load(vectors_path), cached
 
     chunks = load_corpus()
     print(f"Indexando {len(chunks)} chunks (primeira execução)...", file=sys.stderr)
