@@ -5,7 +5,7 @@
 > 18.278 chunks em 13m45s; `.venv` de 5,7 GB para 262 MB; abrir o índice ~2,2 s e a 1ª consulta ~1,6 s
 > (a consulta CLI completa, com as duas chamadas ao Groq, leva ~6 s); funciona offline
 > (`HF_HUB_OFFLINE=1`) depois do download; `.cache/qdrant` 88 MB e `.cache/fastembed` 465 MB. O texto
-> abaixo é o registro da investigação, anterior à implementação. Próximo passo: busca híbrida (BM25).
+> abaixo é o registro da investigação, anterior à implementação. A busca híbrida (BM25 + denso, RRF) veio em seguida, na branch `feat/busca-hibrida`: sobre 10 perguntas de referência o placar aproximado ficou empatado (38 e 37 de 50), "Um tutor digital para cada pessoa" subiu da 79ª para a 8ª posição em "chatgpt na educação" e caiu da 5ª para a 8ª em "…em 2026"; com o filtro `ChatGPT` + tópico educação, 4ª no denso e 2ª no híbrido. O que mais pesa é o filtro por tópico.
 
 ## Motivação
 

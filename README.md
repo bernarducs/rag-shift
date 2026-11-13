@@ -1,8 +1,9 @@
 # rag-shift
 
 Protótipo de RAG por linha de comando sobre emails da newsletter The Shift.
-Recupera os trechos mais próximos da pergunta (Qdrant em disco, similaridade cosseno,
-embeddings `intfloat/multilingual-e5-small` via FastEmbed/ONNX) e gera a resposta com um modelo via API do Groq.
+Recupera os trechos mais próximos da pergunta com busca híbrida no Qdrant em disco (vetores
+`intfloat/multilingual-e5-small` via FastEmbed/ONNX com similaridade cosseno, mais BM25 em português,
+fundidos por RRF) e gera a resposta com um modelo via API do Groq.
 Também responde a perguntas de filtro e contagem ("quantas matérias de 2022?", "notícias sobre a
 Nvidia") a partir de metadados extraídos de cada matéria.
 
@@ -20,7 +21,7 @@ Do zero até a primeira resposta:
 cp env.template .env                  # 1. preencha GROQ_API_KEY e MODEL
 uv run rag-shift-build                # 2. gera the-shift-mails-processed/ (~10 s)
 uv run rag-shift-enrich               # 3. (opcional) metadados para filtros e contagens; precisa de ENRICH_* no .env
-uv run rag-shift "o que é machine learning"   # 4. a 1ª consulta indexa o corpus (~14 min); as próximas levam alguns segundos
+uv run rag-shift "o que é machine learning"   # 4. a 1ª consulta indexa o corpus (~12 a 14 min); as próximas levam alguns segundos
 ```
 
 - O passo 3 grava o `enrichment` em `the-shift-mails-processed/` e é retomável. Sem ele, o corpus
@@ -55,13 +56,13 @@ Regras dos filtros:
 
 ### Saída
 
-Cada documento ou matéria mostra a data do email no fuso de Brasília e o caminho
+Os documentos da busca vêm numerados pela ordem de relevância (o score da fusão híbrida não é uma similaridade, então não é exibido). Cada documento ou matéria mostra a data do email no fuso de Brasília e o caminho
 `edição > seção > título`. É a data em que a The Shift publicou, não a dos artigos citados. Abaixo vêm
 as **fontes**: os links da matéria, com o título quando o link é um item de lista (na lista de matérias,
 só os 3 primeiros e a contagem do resto). Vídeos do YouTube e links de rodapé são ignorados.
 
 ```
-0,893 - IA Agêntica expõe a gestão
+1. IA Agêntica expõe a gestão
    19/11/2025 - Inteligência Aumentada > IA Agêntica expõe a gestão
    Fontes:
    - The Shift: https://theshift.info/hot/quatro-tensoes-redesenham-a-gestao-na-era-da-ia-agentica/

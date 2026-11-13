@@ -157,8 +157,9 @@ def search(processed: dict[tuple[int, str], dict], plan: QueryPlan, question: st
     print(generate_answer(question, docs))
     print("\n")
     print(f"top {limit} documentos relevantes:")
-    for score, doc in docs:
-        print(f"{score:.3f}".replace(".", ",") + f" - {doc['subject']}")
+    # a busca híbrida devolve o score da fusão (RRF), que não é cosseno: mostra só a ordem
+    for rank, (_, doc) in enumerate(docs, start=1):
+        print(f"{rank}. {doc['subject']}")
         print_item(doc["date"], heading_path(doc))
         print_sources(find_links(doc, processed))
 
