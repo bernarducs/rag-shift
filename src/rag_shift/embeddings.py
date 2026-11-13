@@ -1,38 +1,39 @@
-import json
 import os
-import sys
 
-import numpy as np
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
+from fastembed.common.model_description import ModelSource, PoolingType
+from qdrant_client.models import Document
 
-from rag_shift.config import CACHE_DIR
-from rag_shift.corpus import load_corpus
 from rag_shift.preprocessing import heading_path
 
-
-def load_model() -> SentenceTransformer:
-    return SentenceTransformer(os.environ["EMBEDDING_MODEL"])
+_registered = False
 
 
-def get_embeddings(model: SentenceTransformer) -> tuple[np.ndarray, list[dict]]:
-    vectors_path = CACHE_DIR / "embeddings.npy"
-    chunks_path = CACHE_DIR / "chunks.json"
-    # reaproveita o cache para não reindexar o corpus a cada execução
-    if vectors_path.exists() and chunks_path.exists():
-        cached = json.loads(chunks_path.read_text(encoding="utf-8"))
-        if cached and "topics" not in cached[0]:
-            sys.exit("Cache antigo (sem enrichment no payload). Apague .cache/embeddings.npy e .cache/chunks.json.")
-        return np.load(vectors_path), cached
+def model_name() -> str:
+    """Registra o modelo no FastEmbed (uma vez) e devolve o nome.
 
-    chunks = load_corpus()
-    print(f"Indexando {len(chunks)} chunks (primeira execução)...", file=sys.stderr)
-    vectors = model.encode(
-        [f"passage: {heading_path(c)}\n{c['text']}" for c in chunks],
-        batch_size=64,
-        normalize_embeddings=True,
-        show_progress_bar=True,
-    )
-    CACHE_DIR.mkdir(exist_ok=True)
-    np.save(vectors_path, vectors)
-    chunks_path.write_text(json.dumps(chunks, ensure_ascii=False), encoding="utf-8")
-    return vectors, chunks
+    O multilingual-e5-small não está no catálogo do FastEmbed, então entra como modelo
+    customizado (ONNX do repositório da Hugging Face, pooling por média, vetor normalizado).
+    """
+    global _registered
+    name = os.environ["EMBEDDING_MODEL"]
+    if not _registered:
+        TextEmbedding.add_custom_model(
+            model=name,
+            pooling=PoolingType.MEAN,
+            normalization=True,
+            sources=ModelSource(hf=name),
+            dim=int(os.environ["VECTOR_SIZE"]),
+            model_file="onnx/model.onnx",
+        )
+        _registered = True
+    return name
+
+
+# o e5 pede os prefixos "passage: " e "query: "; o FastEmbed não os acrescenta
+def passage_document(chunk: dict) -> Document:
+    return Document(text=f"passage: {heading_path(chunk)}\n{chunk['text']}", model=model_name())
+
+
+def query_document(query: str) -> Document:
+    return Document(text=f"query: {query}", model=model_name())

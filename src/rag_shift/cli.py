@@ -137,21 +137,22 @@ def summarize(processed: dict[tuple[int, str], dict], plan: QueryPlan, question:
 
 
 def search(processed: dict[tuple[int, str], dict], plan: QueryPlan, question: str, limit: int) -> None:
-    # imports pesados (torch) só aqui, para a contagem e a lista não pagarem por eles
-    from rag_shift.embeddings import get_embeddings, load_model
+    # imports pesados (fastembed) só aqui, para a contagem e a lista não pagarem por eles
     from rag_shift.generator import generate_answer
-    from rag_shift.index import build_index
+    from rag_shift.index import open_index
     from rag_shift.retriever import retrieve
 
     # a pergunta original, não a `query` reescrita pelo LLM: reescrever perdia palavras
     semantic = question
-    model = load_model()
-    vectors, chunks = get_embeddings(model)
-    client = build_index(vectors, chunks)
-    docs = retrieve(client, model, semantic, qdrant_filter(plan), limit)
-    if not docs and has_filter(plan):
-        print("Nenhum resultado com os filtros; repetindo sem filtro.", file=sys.stderr)
-        docs = retrieve(client, model, semantic, None, limit)
+    client = open_index()
+    try:
+        docs = retrieve(client, semantic, qdrant_filter(plan), limit)
+        if not docs and has_filter(plan):
+            print("Nenhum resultado com os filtros; repetindo sem filtro.", file=sys.stderr)
+            docs = retrieve(client, semantic, None, limit)
+    finally:
+        # libera a pasta do Qdrant (o modo local aceita um processo por vez)
+        client.close()
 
     print(generate_answer(question, docs))
     print("\n")

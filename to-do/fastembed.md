@@ -1,9 +1,11 @@
 # Migrar embeddings para FastEmbed + Qdrant persistente
 
-> **Status: investigado e medido em um ambiente isolado (2026-11); não implementado.** Decisão
-> pendente: fazer a migração numa branch `feat/fastembed`, de preferência **depois** do
-> enriquecimento (ver `enriquecimento.md`), porque o `retriever.py` vai mudar com os filtros de
-> qualquer jeito. O código de teste foi descartado; este texto é o registro.
+> **Status: implementado na branch `feat/fastembed` (2026-11).** Verificado no projeto: top 5 de 10
+> perguntas idêntico ao do sentence-transformers (10 de 10, diferença de score 0,0000); ingestão de
+> 18.278 chunks em 13m45s; `.venv` de 5,7 GB para 262 MB; abrir o índice ~2,2 s e a 1ª consulta ~1,6 s
+> (a consulta CLI completa, com as duas chamadas ao Groq, leva ~6 s); funciona offline
+> (`HF_HUB_OFFLINE=1`) depois do download; `.cache/qdrant` 88 MB e `.cache/fastembed` 465 MB. O texto
+> abaixo é o registro da investigação, anterior à implementação. Próximo passo: busca híbrida (BM25).
 
 ## Motivação
 
