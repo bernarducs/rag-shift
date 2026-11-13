@@ -1,8 +1,8 @@
 # rag-shift
 
 Protótipo de RAG por linha de comando sobre emails da newsletter The Shift.
-Recupera os trechos mais próximos da pergunta (Qdrant em memória, similaridade cosseno,
-embeddings `intfloat/multilingual-e5-small`) e gera a resposta com um modelo via API do Groq.
+Recupera os trechos mais próximos da pergunta (Qdrant em disco, similaridade cosseno,
+embeddings `intfloat/multilingual-e5-small` via FastEmbed/ONNX) e gera a resposta com um modelo via API do Groq.
 Também responde a perguntas de filtro e contagem ("quantas matérias de 2022?", "notícias sobre a
 Nvidia") a partir de metadados extraídos de cada matéria.
 
@@ -20,14 +20,15 @@ Do zero até a primeira resposta:
 cp env.template .env                  # 1. preencha GROQ_API_KEY e MODEL
 uv run rag-shift-build                # 2. gera the-shift-mails-processed/ (~10 s)
 uv run rag-shift-enrich               # 3. (opcional) metadados para filtros e contagens; precisa de ENRICH_* no .env
-uv run rag-shift "o que é machine learning"   # 4. a 1ª consulta indexa o corpus (~12 min); as próximas levam ~20 s
+uv run rag-shift "o que é machine learning"   # 4. a 1ª consulta indexa o corpus (~14 min); as próximas levam alguns segundos
 ```
 
 - O passo 3 grava o `enrichment` em `the-shift-mails-processed/` e é retomável. Sem ele, o corpus
   funciona só como busca semântica (os filtros e as contagens ficam vazios).
 - Mudou o corpus, o chunking, o modelo de embeddings ou o enrichment? Rode `rag-shift-build` de novo
-  (se for o caso) e apague `.cache/embeddings.npy` e `.cache/chunks.json`.
-- A 1ª consulta precisa de internet para baixar o modelo de embeddings e o tokenizer do NLTK. Deixe
+  (se for o caso) e apague `.cache/qdrant` e `.cache/qdrant-ready`; a próxima consulta reindexa.
+- Só um `rag-shift` por vez: o Qdrant em disco trava a pasta (uma 2ª execução simultânea avisa e sai).
+- A 1ª consulta precisa de internet para baixar o modelo de embeddings (~465 MB, em `.cache/fastembed`) e o tokenizer do NLTK. Deixe
   `HF_HUB_OFFLINE=0` no `.env` e, depois do download, troque para `1` para rodar offline. A chamada
   ao Groq sempre usa a rede.
 
