@@ -3,22 +3,31 @@ import sys
 import warnings
 
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, PayloadSchemaType, VectorParams
+from qdrant_client.models import (
+    Distance,
+    Modifier,
+    PayloadSchemaType,
+    SparseVectorParams,
+    VectorParams,
+)
 
 from rag_shift.config import CACHE_DIR, QDRANT_DIR, QDRANT_READY
 from rag_shift.corpus import load_corpus
-from rag_shift.embeddings import passage_document
+from rag_shift.embeddings import DENSE, SPARSE, chunk_text, passage_document, sparse_document
 
 
 def ingest(client: QdrantClient, collection: str) -> None:
     chunks = load_corpus()
     print(
-        f"Indexando {len(chunks)} chunks (primeira execução, ~12 min; as próximas abrem direto)...",
+        f"Indexando {len(chunks)} chunks (primeira execução, ~12 a 14 min; as próximas abrem direto)...",
         file=sys.stderr,
     )
     client.create_collection(
         collection,
-        vectors_config=VectorParams(size=int(os.environ["VECTOR_SIZE"]), distance=Distance.COSINE),
+        vectors_config={
+            DENSE: VectorParams(size=int(os.environ["VECTOR_SIZE"]), distance=Distance.COSINE)
+        },
+        sparse_vectors_config={SPARSE: SparseVectorParams(modifier=Modifier.IDF)},
     )
     # índices de filtro; no modo local não aceleram nada, mas deixam o esquema pronto
     # para um servidor Qdrant
@@ -30,7 +39,10 @@ def ingest(client: QdrantClient, collection: str) -> None:
     # o próprio cliente calcula os vetores a partir dos Documents
     client.upload_collection(
         collection,
-        vectors=(passage_document(chunk) for chunk in chunks),
+        vectors=(
+            {DENSE: passage_document(chunk), SPARSE: sparse_document(chunk_text(chunk))}
+            for chunk in chunks
+        ),
         payload=chunks,
         ids=range(len(chunks)),
         batch_size=64,
@@ -53,8 +65,10 @@ def open_index() -> QdrantClient:
             raise
         sys.exit("O índice está em uso por outra execução do rag-shift. Espere ela terminar e tente de novo.")
     ready = QDRANT_READY.exists() and client.collection_exists(collection)
-    if ready and client.count(collection).count != int(QDRANT_READY.read_text()):
-        ready = False
+    if ready:
+        # índice de antes da busca híbrida (sem o vetor esparso) ou incompleto: refaz
+        has_sparse = SPARSE in (client.get_collection(collection).config.params.sparse_vectors or {})
+        ready = has_sparse and client.count(collection).count == int(QDRANT_READY.read_text())
     if not ready:
         # índice ausente ou incompleto: recomeça do zero
         if client.collection_exists(collection):
