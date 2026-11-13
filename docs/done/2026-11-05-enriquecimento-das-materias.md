@@ -1,8 +1,8 @@
 # Enriquecimento das matérias
 
-> **Status: experimento concluído (2026-11); decisão: chamada direta com JSON schema, modelo
+> **Status: concluído (2026-11). Extração do corpus inteiro feita (7.452 matérias), normalizada e usada nos filtros e contagens do CLI. Os pontos em aberto (pessoas, fallback, limites da DeepInfra, revisão dos aliases) seguem sem decisão. Decisão do experimento: chamada direta com JSON schema, modelo
 > `openai/gpt-oss-120b`, na DeepInfra (API compatível com a da OpenAI; o experimento rodou no Groq). Critérios de entidades, tópicos e aliases fechados e validados em 48
-> matérias (ver "Especificação"). Implementação ainda não feita.** GLiNER e LangExtract foram descartados.
+> matérias (ver "Especificação"). **GLiNER e LangExtract foram descartados.
 > Os números estão em "Resultado do experimento". As seções "Alternativas" e "Desempenho esperado"
 > são o texto original, escrito antes do experimento (de memória, não medido).
 

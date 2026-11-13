@@ -101,7 +101,7 @@ Extrai empresas, tecnologias, lugares, pessoas e tópicos de cada matéria com u
 | `--normalize-only` | só reaplica a normalização (limpeza, bloqueio, aliases e grafia canônica), sem chamar o LLM |
 
 Cada matéria recebe um `status` (`ok`, `empty`, `failed`, `rate_limited`). Critérios, tópicos e
-aliases estão em `to-do/enriquecimento.md`. O enrichment vai para o payload dos chunks no Qdrant
+aliases estão em `docs/done/2026-11-05-enriquecimento-das-materias.md`. O enrichment vai para o payload dos chunks no Qdrant
 (`year`, `companies`, `technologies`, `places`, `people`, `topics`).
 
 ### Variáveis do `.env` (veja `env.template`)
