@@ -23,6 +23,7 @@ Protótipo de RAG (CLI) sobre emails da The Shift. Python 3.12, gerenciado com `
 - `filters.py`: filtro único (OU dentro do campo, E entre campos) em duas formas: `qdrant_filter` e `section_matches`/`count`/`list_sections` em Python sobre os processados (contagens sem LLM nem embeddings) e `find_by_title` (acha a matéria pelo título, sem acento nem caixa, para o modo resumo)
 - `generator.py`: resposta via Groq (`GROQ_API_KEY`, `MODEL`)
 - `cli.py`: ponto de entrada (`rag-shift`), argparse (`--limit`, `--modo`, `--sem-filtro`), checagem das variáveis obrigatórias do `.env` e fluxo por modo; cada resultado mostra a data do email em Brasília (o `date` é UTC) e o `edição > seção > título`; resumo usa o texto inteiro da matéria; contagem, lista e resumo não carregam o modelo de embeddings (imports pesados só em `search`)
+- `docs/`: `docs/todo/` com as tarefas a fazer (`aaaa-mm-dd-tarefa-a-ser-feita.md`, data de criação) e `docs/done/` com as já feitas; ao terminar uma tarefa, `git mv` de `todo/` para `done/` sem renomear e atualizar o **Status** do topo (ver `docs/README.md`)
 - `scripts/inspect_chunks.py`: valida o chunking sem embeddings (`uv run python scripts/inspect_chunks.py [arquivo.json] | --stats | --links [arquivo.json]`)
 
 ## Pipeline

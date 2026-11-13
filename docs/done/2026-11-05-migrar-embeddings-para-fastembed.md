@@ -86,7 +86,7 @@ consultam. Confirmado: a 2ª e a 3ª execução não revetorizaram.
   `onnx/model.onnx` (tem, em fp32).
 - **Não medido:** tamanho do `.cache/` atual, início com o `HF_HUB_OFFLINE=1`, consumo de memória.
 - **Só de memória, não testado aqui:** modelos esparsos (BM25/SPLADE) do FastEmbed para busca híbrida
-  no Qdrant, que poderiam melhorar a busca por entidade (termo exato) discutida em `enriquecimento.md`.
+  no Qdrant, que poderiam melhorar a busca por entidade (termo exato) discutida em `2026-11-05-enriquecimento-das-materias.md`.
 
 ## Mudanças previstas no código
 
