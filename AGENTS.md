@@ -39,7 +39,7 @@ Protótipo de RAG (CLI) sobre emails da The Shift. Python 3.12, gerenciado com `
 ## Cuidados
 - O `mail_id` **não é único** (865 emails, 557 ids): indexar ou deduplicar emails sempre por `mail_key` (`mail_id` + `date`), nunca só pelo `mail_id`
 - `.env`, `.cache/` e o conteúdo de `the-shift-mails-outputs/` e `the-shift-mails-processed/` não vão para o git (só os `.gitkeep`)
-- Mudar corpus, `CHUNK_SIZE`, `EMBEDDING_MODEL` ou o `enrichment` (que vai no `chunks.json`) exige apagar `.cache/qdrant` e `.cache/qdrant-ready` (a reindexação leva ~12 a 14 min; `.cache/fastembed` é só o modelo e pode ficar)
+- Mudar corpus, `CHUNK_SIZE`, `EMBEDDING_MODEL` ou o `enrichment` (que vai no payload do índice em `.cache/qdrant`) exige apagar `.cache/qdrant` e `.cache/qdrant-ready` (a reindexação leva ~12 a 14 min; `.cache/fastembed` é só o modelo e pode ficar)
 - O `hash` da seção vem só do texto normalizado, então `links` não o altera e o `enrichment` sobrevive ao build; ao mexer em `normalize` e afins, conferir que os `hash` não mudam
 - Os `\r\n\t` do corpus já são whitespace real após `json.load`; a limpeza é feita com regex, não com nltk
 - A hierarquia do texto vem do número de `\n` (1 = linha/bullet, 2 = parágrafo, 3+ = novo título); por isso `normalize` não colapsa as quebras
