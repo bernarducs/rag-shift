@@ -23,11 +23,11 @@ from pathlib import Path
 
 import rag_shift.config  # noqa: F401  (carrega o .env antes dos demais imports)
 from rag_shift.corpus import load_processed
-from rag_shift.filters import conditions, has_filter, qdrant_filter
+from rag_shift.filters import conditions
 from rag_shift.index import open_index
 from rag_shift.preprocessing import ensure_tokenizer
 from rag_shift.query_plan import QueryPlan, build_vocabulary, plan_query, resolve_entities
-from rag_shift.retriever import retrieve
+from rag_shift.retriever import retrieve, retrieve_with_plan
 
 QUESTIONS = Path(__file__).parent / "eval_questions.json"
 REQUIRED_ENV = ["COLLECTION", "EMBEDDING_MODEL", "VECTOR_SIZE", "TOP_K", "CHUNK_SIZE"]
@@ -62,13 +62,14 @@ def position(docs: list[tuple[float, dict]], expected: list[dict]) -> int | None
 
 
 def search_with_plan(client, processed, vocabulary, question: str, depth: int):
-    """Mesmo caminho do `rag-shift`: plano -> filtro -> volta sem filtro se nada voltar."""
+    """Mesmo caminho do `rag-shift`: plano -> filtro -> relaxamento -> volta sem filtro."""
     plan = plan_query(question)
     plan, _ = resolve_entities(plan, vocabulary)
-    docs = retrieve(client, question, qdrant_filter(plan), depth)
-    if not docs and has_filter(plan):
-        docs = retrieve(client, question, None, depth)
-    return plan, docs
+    # o relaxamento usa o TOP_K do CLI (não a profundidade da avaliação) como mínimo de emails
+    docs, notes = retrieve_with_plan(
+        client, processed, plan, question, depth, int(os.environ["TOP_K"])
+    )
+    return plan, docs, notes
 
 
 def label_found(plan: QueryPlan, label: dict) -> bool:
@@ -116,7 +117,9 @@ def main() -> None:
 
             plan_rank, label_ok, plan = None, None, None
             if not args.sem_plano:
-                plan, planned_docs = search_with_plan(client, processed, vocabulary, question, args.depth)
+                plan, planned_docs, notes = search_with_plan(
+                    client, processed, vocabulary, question, args.depth
+                )
                 plan_rank = position(planned_docs, expected)
                 label_ok = label_found(plan, item["label"])
                 planned.append(plan_rank)
@@ -130,6 +133,8 @@ def main() -> None:
                     print(f"      esperado: {target['date']} - {target['title']}")
                 if plan is not None:
                     print(f"      plano: {conditions(plan) or 'sem filtro'} (rótulo: {item['label']['value']})")
+                    for note in notes:
+                        print(f"      {note}")
                 for rank, (_, doc) in enumerate(docs[:5], start=1):
                     print(f"      {rank}. {doc['date'][:10]} - {doc['title']}")
     finally:

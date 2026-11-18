@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 import rag_shift.config  # noqa: F401  (carrega o .env antes dos demais imports)
 from rag_shift.corpus import find_links, load_processed
-from rag_shift.filters import count, find_by_title, has_filter, list_sections, qdrant_filter
+from rag_shift.filters import count, find_by_title, list_sections
 from rag_shift.preprocessing import ensure_tokenizer, heading_path
 from rag_shift.query_plan import QueryPlan, build_vocabulary, plan_query, resolve_entities
 
@@ -59,7 +59,7 @@ def describe(plan: QueryPlan) -> str:
         ("tecnologias", plan.technologies),
         ("lugares", plan.places),
         ("pessoas", plan.people),
-        ("anos", plan.years),
+        ("anos (data do email)", plan.years),
         ("tópicos", plan.topics),
     ):
         if values:
@@ -140,16 +140,15 @@ def search(processed: dict[tuple[int, str], dict], plan: QueryPlan, question: st
     # imports pesados (fastembed) só aqui, para a contagem e a lista não pagarem por eles
     from rag_shift.generator import generate_answer
     from rag_shift.index import open_index
-    from rag_shift.retriever import retrieve
+    from rag_shift.retriever import retrieve_with_plan
 
     # a pergunta original, não a `query` reescrita pelo LLM: reescrever perdia palavras
     semantic = question
     client = open_index()
     try:
-        docs = retrieve(client, semantic, qdrant_filter(plan), limit)
-        if not docs and has_filter(plan):
-            print("Nenhum resultado com os filtros; repetindo sem filtro.", file=sys.stderr)
-            docs = retrieve(client, semantic, None, limit)
+        docs, notes = retrieve_with_plan(client, processed, plan, semantic, limit, limit)
+        for note in notes:
+            print(note, file=sys.stderr)
     finally:
         # libera a pasta do Qdrant (o modo local aceita um processo por vez)
         client.close()
