@@ -1,0 +1,162 @@
+[
+  {
+    "question": "chatgpt na educação",
+    "expected": [
+      {
+        "mail_id": 10474,
+        "date": "2025-12-11",
+        "title": "Um tutor digital para cada pessoa"
+      }
+    ],
+    "label": {
+      "field": "topics",
+      "value": "sociedade, educação e cultura"
+    },
+    "note": "pergunta curta: a entidade domina e o assunto pesa pouco (caso da tarefa filtro-topico-na-busca)"
+  },
+  {
+    "question": "o que mudou no framework de cibersegurança do NIST?",
+    "expected": [
+      {
+        "mail_id": 9990,
+        "date": "2024-02-28",
+        "title": "NIST lança CSF 2.0"
+      }
+    ],
+    "label": {
+      "field": "companies",
+      "value": "NIST"
+    },
+    "note": "entidade rara e assunto na mesma frase"
+  },
+  {
+    "question": "o que a Meta anunciou com a Microsoft sobre o Llama 2?",
+    "expected": [
+      {
+        "mail_id": 9840,
+        "date": "2023-07-19",
+        "title": "Meta lança Llama 2 e anuncia acordo com Microsoft"
+      }
+    ],
+    "label": {
+      "field": "technologies",
+      "value": "Llama 2"
+    },
+    "note": "duas empresas e um produto; o título quase repete a pergunta"
+  },
+  {
+    "question": "por que os preços de celulares e PCs vão subir em 2026?",
+    "expected": [
+      {
+        "mail_id": 10574,
+        "date": "2026-03-05",
+        "title": "Sabe aquele PC ou smartphone novo?"
+      }
+    ],
+    "label": {
+      "field": "technologies",
+      "value": "DRAM"
+    },
+    "note": "a pergunta não cita DRAM nem memória; o título não ajuda"
+  },
+  {
+    "question": "executivos usando ferramentas de IA sem aprovação da empresa",
+    "expected": [
+      {
+        "mail_id": 10648,
+        "date": "2026-06-11",
+        "title": "Liderança é quem mais usa Shadow AI"
+      }
+    ],
+    "label": {
+      "field": "technologies",
+      "value": "Shadow AI"
+    },
+    "note": "paráfrase: o termo Shadow AI não aparece na pergunta; o email tem duas seções sobre o tema"
+  },
+  {
+    "question": "IA e drones no agronegócio",
+    "expected": [
+      {
+        "mail_id": 10343,
+        "date": "2025-02-13",
+        "title": "Agro 5.0: IA, predição e produtividade"
+      }
+    ],
+    "label": {
+      "field": "technologies",
+      "value": "drones"
+    },
+    "note": "pergunta curta com dois assuntos"
+  },
+  {
+    "question": "taxação de compras em sites internacionais como a Shein",
+    "expected": [
+      {
+        "mail_id": 9861,
+        "date": "2023-04-13",
+        "title": "Por que o governo vai taxar compras internacionais?"
+      }
+    ],
+    "label": {
+      "field": "companies",
+      "value": "Shein"
+    },
+    "note": "matéria sem tecnologia; o tópico é regulação e varejo"
+  },
+  {
+    "question": "cansaço mental por usar IA o tempo todo",
+    "expected": [
+      {
+        "mail_id": 10563,
+        "date": "2026-02-20",
+        "title": "Fadiga de IA, o custo invisível"
+      },
+      {
+        "mail_id": 10673,
+        "date": "2026-03-18",
+        "title": "Fadiga mental compromete ganhos com IA"
+      }
+    ],
+    "label": {
+      "field": "topics",
+      "value": "trabalho, pessoas e liderança"
+    },
+    "note": "paráfrase: 'fadiga' não aparece na pergunta"
+  },
+  {
+    "question": "como estão as startups que fazem comida com biotecnologia?",
+    "expected": [
+      {
+        "mail_id": 9993,
+        "date": "2024-03-05",
+        "title": "Há luz no fim do túnel FoodTech"
+      },
+      {
+        "mail_id": 9958,
+        "date": "2024-02-08",
+        "title": "Comida do futuro a perigo"
+      }
+    ],
+    "label": {
+      "field": "technologies",
+      "value": "fermentação de precisão"
+    },
+    "note": "paráfrase: a pergunta não cita fermentação nem agricultura celular"
+  },
+  {
+    "question": "TOTVS lançou um modelo de IA brasileiro para empresas",
+    "expected": [
+      {
+        "mail_id": 10574,
+        "date": "2026-02-23",
+        "title": "LYNN: a IA brasileira B2B de alta performance"
+      }
+    ],
+    "label": {
+      "field": "companies",
+      "value": "TOTVS"
+    },
+    "note": "a pergunta não cita o nome do produto (LYNN)"
+  }
+]

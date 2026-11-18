@@ -50,6 +50,11 @@ Regras dos filtros:
 - Entre campos vale E, dentro de um campo vale OU. O tópico casa com qualquer tópico da matéria.
 - As entidades são casadas com o vocabulário do corpus ("NVIDIA" vira "Nvidia"). As que não existem
   viram só busca semântica, com aviso.
+- Na `busca`, um assunto que corresponda a um dos 13 tópicos entra no filtro junto com a entidade
+  ("chatgpt na educação" filtra por `ChatGPT` e pelo tópico "sociedade, educação e cultura").
+- Se o filtro deixar menos de `--limit` emails, a busca solta os filtros em cascata (primeiro o
+  tópico, depois as entidades, por último o ano) até sobrar esse mínimo, e o CLI diz o que soltou.
+  O ano filtra pela data do email, não pelo assunto da matéria.
 - Se a busca com filtro não achar nada, ela repete sem o filtro. Se a matéria do `resumo` não for
   achada pelo título, cai na busca.
 - Na busca, a pergunta original (não uma versão reescrita) é a que vira embedding.

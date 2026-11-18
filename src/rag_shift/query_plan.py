@@ -37,7 +37,7 @@ Campos:
 - mode: "busca" (pergunta que pede explicação ou resposta), "lista" (pede notícias/matérias de algo), "contagem" (pede "quantos", "quais mais aparecem", ranking) ou "resumo" (pede resumir ou dizer o que traz uma matéria específica, citada pelo título).
 - companies, technologies, places, people: entidades citadas na pergunta, como escritas (empresas e organizações; produtos, modelos e conceitos tecnológicos; países, estados e cidades; pessoas). Só o que está na pergunta.
 - years: anos citados (inteiros).
-- topics: só se a pergunta tratar claramente de um destes assuntos, com o nome exato:
+- topics: o nome exato de um destes assuntos, quando a pergunta nomear um assunto que corresponda a ele, mesmo que também cite uma empresa ou tecnologia (a entidade vai em companies/technologies e o assunto em topics). Não deduza o tópico da entidade: "Llama 2" sozinho não é o assunto "inteligência artificial e dados". Se a pergunta não nomear um assunto, deixe vazio:
 {_TOPIC_LIST}
 - group_by: só em contagem de ranking ("quais empresas mais aparecem" -> companies; "por ano" -> year); senão null.
 - title: só em "resumo": o título da matéria como o usuário escreveu; nesse modo deixe as entidades, anos e tópicos vazios.
@@ -48,7 +48,9 @@ Exemplos:
 "quais empresas mais aparecem em 2024?" -> {{"mode":"contagem","years":[2024],"group_by":"companies","query":""}}
 "notícias sobre a Nvidia" -> {{"mode":"lista","companies":["Nvidia"],"query":""}}
 "resuma a matéria IA Agêntica expõe a gestão" -> {{"mode":"resumo","title":"IA Agêntica expõe a gestão"}}
-"o que foi dito sobre ChatGPT na educação?" -> {{"mode":"busca","technologies":["ChatGPT"],"query":"educação"}}
+"chatgpt na educação" -> {{"mode":"busca","technologies":["ChatGPT"],"topics":["sociedade, educação e cultura"],"query":"educação"}}
+"o que foi dito sobre ChatGPT na educação?" -> {{"mode":"busca","technologies":["ChatGPT"],"topics":["sociedade, educação e cultura"],"query":"educação"}}
+"o que a Meta anunciou sobre o Llama 2?" -> {{"mode":"busca","companies":["Meta"],"technologies":["Llama 2"],"query":"anunciou"}}
 Responda apenas com o JSON."""
 
 

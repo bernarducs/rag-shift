@@ -51,6 +51,36 @@ def matching_sections(processed: dict[tuple[int, str], dict], plan: QueryPlan) -
     ]
 
 
+# ordem em que a busca solta filtros quando sobram poucos emails: o ano é o último, por ser o que o
+# usuário escreve de forma explícita; os campos têm o mesmo nome no plano
+RELAX_STEPS = (("tópicos", ("topics",)), ("entidades", ENTITY_FIELDS), ("anos", ("years",)))
+
+
+def count_mails(processed: dict[tuple[int, str], dict], plan: QueryPlan) -> int:
+    return len({mail_key(mail) for mail, _ in matching_sections(processed, plan)})
+
+
+def relax_plan(
+    processed: dict[tuple[int, str], dict], plan: QueryPlan, min_mails: int
+) -> tuple[QueryPlan, list[str], int]:
+    """Solta filtros em cascata (tópicos, entidades, anos) até sobrarem `min_mails` emails.
+
+    Devolve (plano relaxado, nomes do que foi solto, emails que sobraram com o plano relaxado).
+    A contagem é em Python sobre os processados, antes de consultar o Qdrant.
+    """
+    dropped: list[str] = []
+    remaining = count_mails(processed, plan)
+    for label, fields in RELAX_STEPS:
+        if remaining >= min_mails:
+            break
+        if not any(getattr(plan, field) for field in fields):
+            continue
+        plan = plan.model_copy(update={field: [] for field in fields})
+        dropped.append(label)
+        remaining = count_mails(processed, plan)
+    return plan, dropped, remaining
+
+
 def count(processed: dict[tuple[int, str], dict], plan: QueryPlan, top: int = 20) -> dict:
     """Contagem em Python sobre os processados: matérias, emails e ranking por `group_by`."""
     matches = matching_sections(processed, plan)

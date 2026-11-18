@@ -5,6 +5,8 @@ from qdrant_client.models import Filter, FusionQuery, Fusion, Prefetch
 
 from rag_shift.corpus import mail_key
 from rag_shift.embeddings import DENSE, SPARSE, query_document, sparse_document
+from rag_shift.filters import has_filter, qdrant_filter, relax_plan
+from rag_shift.query_plan import QueryPlan
 
 
 def retrieve(
@@ -33,3 +35,29 @@ def retrieve(
         if key not in best:
             best[key] = (hit.score, hit.payload)
     return list(best.values())[:top_k]
+
+
+def retrieve_with_plan(
+    client: QdrantClient,
+    processed: dict[tuple[int, str], dict],
+    plan: QueryPlan,
+    question: str,
+    top_k: int,
+    min_mails: int,
+) -> tuple[list[tuple[float, dict]], list[str]]:
+    """Busca com os filtros do plano, soltando-os em cascata se sobrarem menos de `min_mails` emails.
+
+    Devolve (resultados, avisos do que foi solto). Se mesmo assim nada voltar, repete sem filtro.
+    """
+    notes = []
+    relaxed, dropped, remaining = relax_plan(processed, plan, min_mails)
+    if dropped:
+        notes.append(
+            f"Poucos emails com os filtros (menos de {min_mails}); soltei {', '.join(dropped)}"
+            f" e sobraram {remaining}."
+        )
+    docs = retrieve(client, question, qdrant_filter(relaxed), top_k)
+    if not docs and has_filter(relaxed):
+        notes.append("Nenhum resultado com os filtros; repetindo sem filtro.")
+        docs = retrieve(client, question, None, top_k)
+    return docs, notes
